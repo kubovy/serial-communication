@@ -1,0 +1,40 @@
+import org.apache.tools.ant.taskdefs.condition.Os
+
+plugins {
+    id 'org.jetbrains.kotlin.jvm'// version '1.3.11'
+}
+
+group 'com.poterion'
+version '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+    jcenter()
+    google()
+    maven {
+        url 'https://www.dcm4che.org/maven2/'
+    }
+}
+
+dependencies {
+    // Kotlin
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.3.11"
+    // Serial
+    implementation "org.scream3r:jssc:2.8.0"
+    // Bluetooth
+    if (Os.isFamily(Os.FAMILY_MAC)) {
+        implementation files("libs/bluecove-2.1.2.jar")
+    } else {
+        implementation "net.sf.bluecove:bluecove:2.1.0"
+    }
+    implementation "net.sf.bluecove:bluecove-gpl:2.1.0"
+    // Logging
+    implementation "org.slf4j:slf4j-api:1.7.21"
+}
+
+compileKotlin {
+    kotlinOptions.jvmTarget = "1.8"
+}
+compileTestKotlin {
+    kotlinOptions.jvmTarget = "1.8"
+}
