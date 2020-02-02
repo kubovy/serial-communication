@@ -10,17 +10,22 @@ import java.util.*
 import java.util.concurrent.ConcurrentLinkedQueue
 
 /**
- * USB communicator, embedded version.
+ * USB communicator.
  *
  * @author Jan Kubovy [jan@kubovy.eu]
  */
 class USBCommunicator : Communicator<USBCommunicator.Descriptor>(Channel.USB) {
 
+	/**
+	 * USB connection descriptor.
+	 *
+	 * @param portName Port name
+	 */
 	data class Descriptor(val portName: String) {
 		override fun toString(): String = portName
 	}
 
-	enum class State {
+	private enum class State {
 		IDLE,
 		LENGTH_HIGH,
 		LENGTH_LOW,
@@ -29,7 +34,7 @@ class USBCommunicator : Communicator<USBCommunicator.Descriptor>(Channel.USB) {
 
 	companion object {
 		private val LOGGER: Logger = LoggerFactory.getLogger(USBCommunicator::class.java)
-		const val MAX_PACKET_SIZE = 35
+		const val MAX_PACKET_SIZE = 35 // TODO
 	}
 
 	private var serialPort: SerialPort? = null
@@ -139,16 +144,17 @@ class USBCommunicator : Communicator<USBCommunicator.Descriptor>(Channel.USB) {
 	 *
 	 * One application packet can be divided into multiple interface packets.
 	 *
-	 * ----------------------------------
-	 * |             PACKET             |
-	 * ----------------------------------
-	 * |SYNC|LENH|LENL|DATA        |CRC |
-	 * ----------------------------------
-	 * |0xAA|0xXX|0xXX|0xXX .. 0xXX|0xXX|
-	 * ----------------------------------
-	 * |    |         |---- LEN ---|    |
-	 * |    |-------- CRC -------- |    |
-	 * ----------------------------------
+	 *     |================================|
+	 *     |             PACKET             |
+	 *     |--------------------------------|
+	 *     |SYNC|LENH|LENL|DATA        |CRC |
+	 *     |--------------------------------|
+	 *     |0xAA|0xXX|0xXX|0xXX .. 0xXX|0xXX|
+	 *     |--------------------------------|
+	 *     |    |         |---- LEN ---|    |
+	 *     |    |-------- CRC -------- |    |
+	 *     |--------------------------------|
+	 *     |================================|
 	 */
 	private fun ByteArray.wrap() = ByteArray(size + 4) {
 		when (it) {

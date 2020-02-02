@@ -1,5 +1,8 @@
 package com.poterion.communication.serial
 
+import com.poterion.communication.serial.Communicator.Companion.MAX_SEND_ATTEMPTS
+import com.poterion.communication.serial.Communicator.Companion.MESSAGE_CONFIRMATION_TIMEOUT
+import com.poterion.communication.serial.Communicator.State
 import javafx.application.Platform
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -11,41 +14,166 @@ import javax.microedition.io.ConnectionNotFoundException
 import kotlin.random.Random
 
 /**
- * Communicator.
+ * Abstract serial communicator enabling to communicated with a peripheral device over a [Channel] using binary
+ * messages. The first 2 bytes of every message have a fixed semantic:
+ *
+ *      | CRC|KIND|...
+ *      |0xXX|0xYY|...
+ *
+ * First byte is a [checksum][calculateChecksum] and the second byte is a [MessageKind]. The rest of the message
+ * depends on the implementation of a concrete [MessageKind]. The maximum length of a message is determined by the
+ * [Channel.maxPacketSize]. If necessary a message needs to be split to different packets.
+ *
+ * A communicator manages three threads: connection thread, inbound thread, and outbound thread.
+ *
+ * The connection thread in [State.CONNECTING] interrupts both, inbound and outboud, communication threads, if such
+ * are alive. Clean up the connection and tries to start new set of inbound and outbound communication threads. In all
+ * other [states][State] it just sleeps.
+ *
+ * The inbound thread waits for [nextMessage], which is expected to be implemented as a blocking function. Only non
+ * empty messages are considered.
+ *
+ * First byte of that message is extracted as a message-checksum calculated by the
+ * sender. Then the rest of the message is used to [calculate a checksum][calculateChecksum] on the receiver side.
+ * If both, the received and the calculated, checksums match, the message is considered as valid for further processing.
+ * Otherwise, the message is discarded.
+ *
+ * A [MessageKind] is then determined based on the second byte. All non-[CRC][MessageKind.CRC] messages a CRC checksum
+ * is send back to the sender containing the [calculated checksum][calculateChecksum]:
+ *
+ *       | CRC|KIND|CONTENT|
+ *       |0xXX|0x00|  0xXX |
+ *
+ * A [MessageKind.CRC] message will store the received CRC to compare with the last sent message. This way the
+ * communicator determines when a sent message was successfully received by the other side.
+ *
+ * A [MessageKind.IDD] message implements a protocol to initialize a connection and determine its stability.
+ *
+ * Any other [MessageKind] will be simply forwarded using the [CommunicatorListener.onMessageReceived] and has to be
+ * implemented further.
+ *
+ * Last, the outbound thread monitors 2 queues: the _checksum queue_ and the _message queue_. The _checksum queue_
+ * has priority over the _message queue_. The _checksum queue_ contains a list of [checksum bytes][calculateChecksum]
+ * of recently received messages to be confirmed to the sender. The _message queue_ contains a list of binary messages
+ * to be send to the receiver without the checksum byte (the 1st byte). The checksum will be calculated freshly before
+ * any send attempt.
+ *
+ * The following flows and situactions are considered during communication between the sender and the receiver. Both
+ * side share this implementation:
+ *
+ * In good case transmitting a message works first time and is being confirmed right-away:
+ *
+ * ![Success](https://github.com/kubovy/serial-communication/raw/master/src/img/communication-success.png)
+ *
+ * One typical error case is when a message does not reach its target. In this case the message is resend again after
+ * a certain timeout (by default 500ms - [MESSAGE_CONFIRMATION_TIMEOUT], but can be overrwritten for different
+ * [MessageKind] - [MessageKind.delay]).
+ *
+ * ![Sent timeout](https://github.com/kubovy/serial-communication/raw/master/src/img/communication-sent-timeout.png)
+ *
+ * In the same way it may happen, that the message got received corretly, but the CRC was not. Each [MessageKind]
+ * needs to be implemented in a idempotent way so receiving multiple same messages after each other should not result
+ * in errors.
+ *
+ * ![CRC timeout](https://github.com/kubovy/serial-communication/raw/master/src/img/communication-confirmation-timeout.png)
+ *
+ * To prevent resent starvation, one message is retried up to 20 times by default ([MAX_SEND_ATTEMPTS]) and then it
+ * is dropped. The developer is responsible for resolution of such situations.
+ *
+ * The connection can be in one of the following states:
+ *
+ *  - [State.DISCONNECTED]
+ *  - [State.CONNECTING]
+ *  - [State.CONNECTED]
+ *  - [State.DISCONNECTING]
  *
  * @author Jan Kubovy [jan@kubovy.eu]
+ * @param ConnectionDescriptor Implementation specific connection description.
+ * @param channel [Channel] to use.
+ * @see CommunicatorListener
+ * @see MessageKind
+ * @see Channel
+ * @see State
+ */
+/*
+ * @startuml
+ * participant Sender as A
+ * participant Receiver as B
+ *
+ * autonumber "<i>[#]</i>"
+ * A   ->  B : Message
+ * A  <--  B : CRC
+ * @enduml
+ */
+/*
+ * @startuml
+ * participant Sender as A
+ * participant Receiver as B
+ *
+ * autonumber "<i>[#]</i>"
+ * A   ->x B: Message
+ * ... timeout ...
+ * A   ->  B: Message
+ * A  <--  B: CRC
+ * @enduml
+ */
+/*
+ * @startuml
+ * participant Sender as A
+ * participant Receiver as B
+ *
+ * autonumber "<i>[#]</i>"
+ * A   ->  B: Message
+ * A x<--  B: CRC
+ * ... timeout ...
+ * A   ->  B: Message
+ * A  <--  B: CRC
+ * @enduml
  */
 abstract class Communicator<ConnectionDescriptor>(private val channel: Channel) {
 
 	companion object {
 		private val LOGGER: Logger = LoggerFactory.getLogger(Communicator::class.java)
-		//const val MAX_PACKET_SIZE = 32
 		const val IDD_PING = false
+		const val MESSAGE_CONFIRMATION_TIMEOUT = 500L // default delay in ms
+		const val MAX_SEND_ATTEMPTS = 20
 	}
 
+	/**Connection state. */
 	enum class State {
+		/** Device is disconnected. */
 		DISCONNECTED,
+		/** Devices is currently connecting but not yet connected. No messages can be still send or received from the
+		 *  device. */
 		CONNECTING,
+		/** Device is connected. Message exchange can be performed. */
 		CONNECTED,
+		/** No message exchange can be guaranteed. The device is currently being disconnected. */
 		DISCONNECTING;
 	}
 
+	/** Whether the device is in [State.CONNECTED] or not */
 	val isConnected: Boolean
 		get() = state == State.CONNECTED
 
+	/** Whether the device is in [State.CONNECTING] or not */
 	val isConnecting: Boolean
 		get() = state == State.CONNECTING
 
+	/** Whether the device is in [State.DISCONNECTING] or not */
 	val isDisconnecting: Boolean
 		get() = state == State.DISCONNECTING
 
+	/** Whether the device is in [State.DISCONNECTED] or not */
 	val isDisconnected: Boolean
 		get() = state == State.DISCONNECTED
 
 	private var connectionRequested = false
 
+	/** Current state of the connection to the device. */
 	var state = State.DISCONNECTED
 		private set
+
 	private var iddState = 0x00
 	private var iddCounter = 0
 	private var attempt = 0
@@ -123,32 +251,40 @@ abstract class Communicator<ConnectionDescriptor>(private val channel: Channel) 
 
 				if (message != null) {
 					val chksumReceived = message[0].toInt() and 0xFF
-					val chksum = message.toList().subList(1, message.size).toByteArray().calculateChecksum()
-					LOGGER.debug("${channel} ${connectionDescriptor}> Inbound  RAW [${"0x%02X".format(chksumReceived)}/${"0x%02X".format(chksum)}]:" +
-							" ${message.joinToString(" ") { "0x%02X".format(it) }}")
+					val chksumCalculated = message.toList().subList(1, message.size).toByteArray().calculateChecksum()
+					LOGGER.debug("${channel} ${connectionDescriptor}> Inbound  RAW" +
+							" [${"0x%02X".format(chksumReceived)}/${"0x%02X".format(chksumCalculated)}]:" +
+							" ${message.joinToString(" ") { "0x%02X".format(it) }}"
+					)
 
-					if (chksum == chksumReceived) {
+					if (chksumCalculated == chksumReceived) {
 						val messageKind = message[1]
-								.let { byte -> MessageKind.values().find { it.code.toByte() == byte } }
-								?: MessageKind.UNKNOWN
+							.let { byte -> MessageKind.values().find { it.code.toByte() == byte } }
+							?: MessageKind.UNKNOWN
 
-						if (messageKind != MessageKind.CRC) checksumQueue.add(chksum.toByte())
+						if (messageKind != MessageKind.CRC) checksumQueue.add(chksumCalculated.toByte())
 
 						when (messageKind) {
 							MessageKind.CRC -> {
 								lastChecksum = (message[2].toInt() and 0xFF)
-								LOGGER.debug("${channel} ${connectionDescriptor}> Inbound  [CRC] ${"0x%02X".format(lastChecksum)}")
+								LOGGER.debug("${channel} ${connectionDescriptor}>" +
+										" Inbound  [CRC] ${"0x%02X".format(lastChecksum)}")
 							}
 							MessageKind.IDD -> {
 								if (message.size > 3) iddState = message[3].toUInt() + 1
-								LOGGER.debug("${channel} ${connectionDescriptor}> Inbound  [IDD] ${"0x%02X".format(iddState)}")
-								listeners.forEach { Platform.runLater { it.onMessageReceived(channel, message.toIntArray()) } }
+								LOGGER.debug("${channel} ${connectionDescriptor}>" +
+										" Inbound  [IDD] ${"0x%02X".format(iddState)}")
+								listeners.forEach {
+									Platform.runLater { it.onMessageReceived(channel, message.toIntArray()) }
+								}
 							}
 							else -> {
 								LOGGER.debug("${channel} ${connectionDescriptor}> Inbound "
 										+ " [${messageKind.name}]"
 										+ " ${message.joinToString(" ") { "0x%02X".format(it) }}")
-								listeners.forEach { Platform.runLater { it.onMessageReceived(channel, message.toIntArray()) } }
+								listeners.forEach {
+									Platform.runLater { it.onMessageReceived(channel, message.toIntArray()) }
+								}
 							}
 						}
 					}
@@ -183,6 +319,7 @@ abstract class Communicator<ConnectionDescriptor>(private val channel: Channel) 
 					//listeners.forEach { Platform.runLater { it.onMessageSent(channel, data, messageQueue.size) } }
 				} else if (messageQueue.isNotEmpty()) {
 					idleLoops = 0
+					attempt++
 					val (message, delay) = messageQueue.peek()
 					val kind = MessageKind.values().find { it.code.toByte() == message[0] }
 					val checksum = message.calculateChecksum()
@@ -192,10 +329,11 @@ abstract class Communicator<ConnectionDescriptor>(private val channel: Channel) 
 
 					LOGGER.debug("${channel} ${connectionDescriptor}> Outbound"
 							+ " [${"0x%02X".format(lastChecksum)}/${"0x%02X".format(checksum)}]"
-							+ " ${data.joinToString(" ") { "0x%02X".format(it) }} (attempt: ${++attempt})")
+							+ " ${data.joinToString(" ") { "0x%02X".format(it) }} (attempt: ${attempt})"
+					)
 
 
-					var timeout = delay ?: 500 // default delay in ms
+					var timeout = delay ?: MESSAGE_CONFIRMATION_TIMEOUT
 					while (lastChecksum != checksum && timeout > 0) {
 						Thread.sleep(1)
 						timeout--
@@ -206,7 +344,7 @@ abstract class Communicator<ConnectionDescriptor>(private val channel: Channel) 
 						messageQueue.poll()
 						attempt = 0
 					}
-					if (attempt >= 20) {
+					if (attempt >= MAX_SEND_ATTEMPTS) {
 						attempt = 0
 						throw ConnectionNotFoundException("Maximum attempts reached")
 					}
@@ -216,10 +354,10 @@ abstract class Communicator<ConnectionDescriptor>(private val channel: Channel) 
 						}
 						MessageKind.IDD -> {
 							if (correctlyReceived) {
-								LOGGER.debug("${channel} ${connectionDescriptor}> Outbound"
-										+ " [${"0x%02X".format(lastChecksum)}/${"0x%02X".format(checksum)}]:"
-										+ " ${data.joinToString(" ") { "0x%02X".format(it) }}"
-										+ " (remaining: ${messageQueue.size})")
+								LOGGER.debug("${channel} ${connectionDescriptor}> Outbound" +
+										" [${"0x%02X".format(lastChecksum)}/${"0x%02X".format(checksum)}]:" +
+										" ${data.joinToString(" ") { "0x%02X".format(it) }}" +
+										" (remaining: ${messageQueue.size})")
 								iddCounter = -5
 							} else {
 								LOGGER.debug("${channel} ${connectionDescriptor}> ${iddCounter + 1}. ping not returned")
@@ -269,7 +407,7 @@ abstract class Communicator<ConnectionDescriptor>(private val channel: Channel) 
 	}
 
 	/**
-	 * Wherther the communicator can connect or not.
+	 * Whether the communicator can connect or not.
 	 *
 	 * @return True, all conditions to establish a connection are met.
 	 */
@@ -283,9 +421,7 @@ abstract class Communicator<ConnectionDescriptor>(private val channel: Channel) 
 	 */
 	abstract fun createConnection(): Boolean
 
-	/**
-	 * Cleans up connection after disconnecting.
-	 */
+	/** Cleans up connection after disconnecting. */
 	abstract fun cleanUpConnection()
 
 	/**
@@ -362,9 +498,6 @@ abstract class Communicator<ConnectionDescriptor>(private val channel: Channel) 
 		return false
 	}
 
-	/**
-	 * Reconnects to a currently connected device.
-	 */
 	private fun reconnect() = disconnectInternal(false)
 
 	/** Disconnects from a device. */
@@ -390,9 +523,7 @@ abstract class Communicator<ConnectionDescriptor>(private val channel: Channel) 
 		}
 	}
 
-	/**
-	 * Shuts the communicator down completely.
-	 */
+	/** Shuts the communicator down completely. */
 	open fun shutdown() {
 		disconnectInternal(stayDisconnected = true)
 		LOGGER.debug("${channel} ${connectionDescriptor}> Shutting down communicator ...")

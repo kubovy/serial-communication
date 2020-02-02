@@ -1,7 +1,8 @@
 package com.poterion.communication.serial
 
 /**
- * Bluetooth listener interface.
+ * Communication listener interface enables other part of the application to use the [Communicator] to communicate
+ * with a peripheral device.
  *
  * @author Jan Kubovy [jan@kubovy.eu]
  */

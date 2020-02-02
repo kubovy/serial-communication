@@ -9,12 +9,18 @@ import javax.microedition.io.Connector
 import javax.microedition.io.StreamConnection
 
 /**
- * Bluetooth communicator, embedded version.
+ * Bluetooth communicator.
  *
  * @author Jan Kubovy [jan@kubovy.eu]
  */
 class BluetoothCommunicator : Communicator<BluetoothCommunicator.Descriptor>(Channel.BLUETOOTH) {
 
+	/**
+	 * Bluetooth connection descriptor.
+	 *
+	 * @param address Bluetooth address
+	 * @param channel Channel
+	 */
 	data class Descriptor(val address: String, val channel: Int) {
 		override fun toString(): String = "${address}[${channel}]"
 	}
