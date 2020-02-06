@@ -1,4 +1,4 @@
-package com.poterion.communication.serial
+package com.poterion.communication.serial.communicator
 
 import jssc.SerialPort
 import jssc.SerialPortEvent
@@ -14,7 +14,8 @@ import java.util.concurrent.ConcurrentLinkedQueue
  *
  * @author Jan Kubovy [jan@kubovy.eu]
  */
-class USBCommunicator : Communicator<USBCommunicator.Descriptor>(Channel.USB) {
+class USBCommunicator : Communicator<USBCommunicator.Descriptor>(
+	Channel.USB) {
 
 	/**
 	 * USB connection descriptor.
@@ -60,7 +61,8 @@ class USBCommunicator : Communicator<USBCommunicator.Descriptor>(Channel.USB) {
 						when (state) {
 							State.IDLE -> {
 								if (byte.toUInt() == 0xAA) {
-									this.state = State.LENGTH_HIGH
+									this.state =
+										State.LENGTH_HIGH
 									this.chksum = 0
 									//LOGGER.debug("USB> 0xAA: IDLE -> LENGTH_HIGH")
 								}
@@ -68,18 +70,21 @@ class USBCommunicator : Communicator<USBCommunicator.Descriptor>(Channel.USB) {
 							State.LENGTH_HIGH -> {
 								this.length = byte.toUInt() * 256
 								this.chksum += byte.toUInt()
-								this.state = State.LENGTH_LOW
+								this.state =
+									State.LENGTH_LOW
 								//LOGGER.debug("USB> 0x%02X: LENGTH_HIGH -> LENGTH_LOW".format(byte))
 							}
 							State.LENGTH_LOW -> {
 								this.length += byte.toUInt()
 								if (this.length > buffer.size) {
-									this.state = State.IDLE
+									this.state =
+										State.IDLE
 									//LOGGER.debug("USB> 0x%02X: LENGTH_LOW -> IDLE".format(byte))
 								} else {
 									this.chksum += byte.toUInt()
 									this.index = 0
-									this.state = State.ADDITIONAL
+									this.state =
+										State.ADDITIONAL
 									//LOGGER.debug("USB> 0x%02X: LENGTH_LOW -> ADDITIONAL".format(byte))
 								}
 							}
@@ -95,7 +100,8 @@ class USBCommunicator : Communicator<USBCommunicator.Descriptor>(Channel.USB) {
 									} else {
 										LOGGER.warn("USB> 0x%02X: Wrong checksum (0x%02X)".format(byte, this.chksum))
 									}
-									this.state = State.IDLE
+									this.state =
+										State.IDLE
 								}
 							}
 						}

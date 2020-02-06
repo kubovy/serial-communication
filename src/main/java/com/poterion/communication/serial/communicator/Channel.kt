@@ -1,4 +1,4 @@
-package com.poterion.communication.serial
+package com.poterion.communication.serial.communicator
 
 /**
  * Communication channels.

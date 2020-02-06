@@ -1,4 +1,8 @@
+@file:Suppress("unused")
 package com.poterion.communication.serial
+
+import com.poterion.communication.serial.communicator.Communicator
+import java.nio.charset.Charset
 
 /**
  * Converts 8 bools to one byte.
@@ -44,3 +48,13 @@ fun byte2Bools(byte: Int) = listOf(
  */
 fun ByteArray.calculateChecksum() = (map { it.toInt() }.takeIf { it.isNotEmpty() }?.reduce { acc, i -> (acc + i) and 0xFF }
 		?: 0) and 0xFF
+
+fun Pair<Byte, Byte>.toInt() = let { first.toInt() to second.toInt() }.toDoubleInt()
+
+fun Pair<Int, Int>.toDoubleInt() = let { ((it.first shl 8) and 0xFF00) or (it.second and 0xFF) }
+
+fun Int.toByteArray() = listOf(this).toByteArray()
+
+fun List<Int>.toByteArray() = this.map { it.toByte() }.toByteArray()
+
+fun IntArray.toString(charset: Charset) = map { it.toByte() }.toByteArray().toString(charset)

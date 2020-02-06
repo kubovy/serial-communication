@@ -1,4 +1,4 @@
-package com.poterion.communication.serial
+package com.poterion.communication.serial.communicator
 
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -13,7 +13,8 @@ import javax.microedition.io.StreamConnection
  *
  * @author Jan Kubovy [jan@kubovy.eu]
  */
-class BluetoothCommunicator : Communicator<BluetoothCommunicator.Descriptor>(Channel.BLUETOOTH) {
+class BluetoothCommunicator : Communicator<BluetoothCommunicator.Descriptor>(
+	Channel.BLUETOOTH) {
 
 	/**
 	 * Bluetooth connection descriptor.
