@@ -1,7 +1,24 @@
+/******************************************************************************
+ * Copyright (C) 2020 Jan Kubovy (jan@kubovy.eu)                              *
+ *                                                                            *
+ * This program is free software: you can redistribute it and/or modify it    *
+ * under the terms of the GNU Lesser General Public License as published      *
+ * by the Free Software Foundation, either version 3 of the License, or (at   *
+ * your option) any later version.                                            *
+ *                                                                            *
+ * This program is distributed in the hope that it will be useful, but        *
+ * WITHOUT ANY WARRANTY; without even the implied warranty of                 *
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the              *
+ * GNU Lesser General Public License for more details.                        *
+ *                                                                            *
+ * You should have received a copy of the GNU Lesser General Public           *
+ * License along with this program.  If not, see                              *
+ * <http://www.gnu.org/licenses/>.                                            *
+ ******************************************************************************/
 @file:Suppress("unused")
+
 package com.poterion.communication.serial
 
-import com.poterion.communication.serial.communicator.Communicator
 import java.nio.charset.Charset
 
 /**
@@ -18,14 +35,14 @@ import java.nio.charset.Charset
  * @return Composed byte.
  */
 fun bools2Byte(b7: Boolean, b6: Boolean, b5: Boolean, b4: Boolean, b3: Boolean, b2: Boolean, b1: Boolean, b0: Boolean) =
-		(if (b7) 0b10000000 else 0b00000000) or
-				(if (b6) 0b01000000 else 0b00000000) or
-				(if (b5) 0b00100000 else 0b00000000) or
-				(if (b4) 0b00010000 else 0b00000000) or
-				(if (b3) 0b00001000 else 0b00000000) or
-				(if (b2) 0b00000100 else 0b00000000) or
-				(if (b1) 0b00000010 else 0b00000000) or
-				(if (b0) 0b00000001 else 0b00000000)
+	(if (b7) 0b10000000 else 0b00000000) or
+			(if (b6) 0b01000000 else 0b00000000) or
+			(if (b5) 0b00100000 else 0b00000000) or
+			(if (b4) 0b00010000 else 0b00000000) or
+			(if (b3) 0b00001000 else 0b00000000) or
+			(if (b2) 0b00000100 else 0b00000000) or
+			(if (b1) 0b00000010 else 0b00000000) or
+			(if (b0) 0b00000001 else 0b00000000)
 
 /**
  * Converts a byte to an list of 8 bools.
@@ -46,8 +63,8 @@ fun byte2Bools(byte: Int) = listOf(
 /**
  * Calculates a checksum.
  */
-fun ByteArray.calculateChecksum() = (map { it.toInt() }.takeIf { it.isNotEmpty() }?.reduce { acc, i -> (acc + i) and 0xFF }
-		?: 0) and 0xFF
+fun ByteArray.calculateChecksum() =
+	(map { it.toInt() }.takeIf { it.isNotEmpty() }?.reduce { acc, i -> (acc + i) and 0xFF } ?: 0) and 0xFF
 
 fun Pair<Byte, Byte>.toInt() = let { first.toInt() to second.toInt() }.toDoubleInt()
 

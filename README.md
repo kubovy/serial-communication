@@ -573,3 +573,7 @@ Not applicable (N/A)
 ### [0xFF] Unknown message (UNKNOWN)
 
 Not applicable (N/A)
+
+# License
+
+This library is licensed under [GNU Lesser General Public License (LGPL) 3.0](COPYING)
