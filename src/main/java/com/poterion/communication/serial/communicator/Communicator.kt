@@ -18,10 +18,14 @@
 @file:Suppress("MemberVisibilityCanBePrivate")
 package com.poterion.communication.serial.communicator
 
-import com.poterion.communication.serial.*
+import com.poterion.communication.serial.MessageKind
+import com.poterion.communication.serial.byte2Bools
+import com.poterion.communication.serial.calculateChecksum
 import com.poterion.communication.serial.communicator.Communicator.Companion.MAX_SEND_ATTEMPTS
 import com.poterion.communication.serial.communicator.Communicator.Companion.MESSAGE_CONFIRMATION_TIMEOUT
-import com.poterion.communication.serial.payload.*
+import com.poterion.communication.serial.payload.DeviceCapabilities
+import com.poterion.communication.serial.payload.DeviceIdState
+import com.poterion.communication.serial.toByteArray
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.io.IOException
@@ -29,7 +33,6 @@ import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import javax.microedition.io.ConnectionNotFoundException
-import kotlin.collections.toByteArray
 import kotlin.random.Random
 
 /**
@@ -184,8 +187,7 @@ abstract class Communicator<ConnectionDescriptor>(internal val channel: Channel)
 	final override var state = State.DISCONNECTED
 		private set
 
-	final override var deviceCapabilities: DeviceCapabilities =
-		DeviceCapabilities()
+	final override var deviceCapabilities: DeviceCapabilities = DeviceCapabilities()
 		private set
 
 	final override var deviceName: String = ""
@@ -208,12 +210,15 @@ abstract class Communicator<ConnectionDescriptor>(internal val channel: Channel)
 	private var outboundThread: Thread? = null
 
 	private var idleLoops = 0
+	private var onDemand = false
+	protected val logTag: String
+		get() = "${channel} ${connectionDescriptor}>"
 
 	private val connectorRunnable: () -> Unit = {
 		Thread.currentThread().name = "${channel} Connector"
 		while (!Thread.interrupted()) {
 			if (state == State.CONNECTING) {
-				LOGGER.debug("${channel} ${connectionDescriptor}> Connection attempt ...")
+				LOGGER.debug("${logTag} Connection attempt ...")
 
 				inboundThread?.takeIf { it.isAlive }?.interrupt()
 				outboundThread?.takeIf { it.isAlive }?.interrupt()
@@ -221,7 +226,7 @@ abstract class Communicator<ConnectionDescriptor>(internal val channel: Channel)
 
 				while (state == State.CONNECTING) try {
 					if (createConnection()) {
-						iddState = 0x00
+						iddState = if (onDemand) DeviceIdState.values().size else 0x00
 						iddCounter = 0
 						attempt = 0
 
@@ -241,20 +246,23 @@ abstract class Communicator<ConnectionDescriptor>(internal val channel: Channel)
 					}
 					Thread.sleep(1000)
 				} catch (e: Exception) {
-					LOGGER.error("${channel} ${connectionDescriptor}> ${e.message}", e)
+					LOGGER.error("${logTag} ${e.message}", e)
 					Thread.sleep(1000)
 					disconnectInternal(stayDisconnected = false)
+					onDemand = false
 				}
-			} else {
+			} else if (state == State.CONNECTED) {
 				Thread.sleep(100)
 				idleLoops++
-				if (idleLoops == 30) {
+				if (!onDemand && idleLoops >= 30) {
 					if (messageQueue.isEmpty() && checksumQueue.isEmpty()) sendPing()
 					idleLoops = 0
 				}
+			} else {
+				Thread.sleep(100)
 			}
 		}
-		LOGGER.debug("${channel} ${connectionDescriptor}> Connection thread exited")
+		LOGGER.debug("${logTag} Connection thread exited")
 	}
 
 	private val inboundRunnable: () -> Unit = {
@@ -279,7 +287,7 @@ abstract class Communicator<ConnectionDescriptor>(internal val channel: Channel)
 						when (messageKind) {
 							MessageKind.CRC -> {
 								lastChecksum = (message[2].toInt() and 0xFF)
-								//LOGGER.debug("${channel} ${connectionDescriptor}>" +
+								//LOGGER.debug("${logTag}" +
 								//		" Inbound [CRC] ${"0x%02X".format(lastChecksum)}")
 							}
 							MessageKind.IDD -> {
@@ -341,16 +349,16 @@ abstract class Communicator<ConnectionDescriptor>(internal val channel: Channel)
 					Thread.sleep(100L)
 				}
 			} catch (e: Exception) {
-				LOGGER.error("${channel} ${connectionDescriptor}> ${e.message}", e)
+				LOGGER.error("${logTag} ${e.message}", e)
 				Thread.sleep(1000)
 				disconnectInternal(stayDisconnected = false)
 			}
 		} catch (e: Exception) {
-			LOGGER.warn("${channel} ${connectionDescriptor}> ${e.message}")
+			LOGGER.warn("${logTag} ${e.message}")
 			Thread.sleep(1000)
 			disconnectInternal(stayDisconnected = false)
 		}
-		LOGGER.debug("${channel} ${connectionDescriptor}> Inbound thread exited")
+		LOGGER.debug("${logTag} Inbound thread exited")
 	}
 
 	private val outboundRunnable: () -> Unit = {
@@ -424,26 +432,39 @@ abstract class Communicator<ConnectionDescriptor>(internal val channel: Channel)
 					Thread.sleep(100L)
 					iddCounter++
 				} else if (iddCounter == 0) {
+					if (onDemand) {
+						onDemand = false
+						disconnect()
+					}
 					val state = DeviceIdState.values().find { it.code == iddState }
 					if (state != null) sendDeviceStateRequest(state)
 					else if (IDD_PING) sendPing()
 				} else {
+					if (onDemand) {
+						onDemand = false
+						disconnect()
+					}
 					Thread.sleep(100L)
 				}
 			} catch (e: Exception) {
-				LOGGER.error("${channel} ${connectionDescriptor}> ${e.message}")
+				LOGGER.error("${logTag} ${e.message}")
 				Thread.sleep(1000)
 				disconnectInternal(stayDisconnected = false)
 			}
 		} catch (e: Exception) {
-			LOGGER.warn("${channel} ${connectionDescriptor}> ${e.message}")
+			LOGGER.warn("${logTag} ${e.message}")
 			Thread.sleep(1000)
 			disconnectInternal(stayDisconnected = false)
 		}
-		LOGGER.debug("${channel} ${connectionDescriptor}> Outbound thread exited")
+		LOGGER.debug("${logTag} Outbound thread exited")
 	}
 
 	final override fun sendBytes(kind: MessageKind, vararg message: Byte) {
+		listeners.forEach { it.onMessagePrepare(channel) }
+		if (isDisconnected) {
+			onDemand = true
+			connectionDescriptor?.let { connect(it) }
+		}
 		message.let { data ->
 			ByteArray(data.size + 1) { i ->
 				when (i) {
@@ -475,15 +496,15 @@ abstract class Communicator<ConnectionDescriptor>(internal val channel: Channel)
 	 *
 	 * @param descriptor Descriptor of the device.
 	 */
-	final override fun connect(descriptor: ConnectionDescriptor): Boolean {
+	final override fun connect(descriptor: ConnectionDescriptor?): Boolean {
 		connectionRequested = true
-		if (canConnect(descriptor)) {
-			LOGGER.debug("${channel} ${connectionDescriptor}> Connecting ...")
+		if (descriptor?.let { canConnect(it) } == true || connectionDescriptor?.let { canConnect(it) } == true) {
+			LOGGER.debug("${logTag} Connecting ...")
 			if (state == State.CONNECTED) disconnectInternal(stayDisconnected = false)
 
 			messageQueue.clear()
 			checksumQueue.clear()
-			connectionDescriptor = descriptor
+			if (descriptor?.let { canConnect(it) } == true) connectionDescriptor = descriptor
 
 			state = State.CONNECTING
 			listeners.forEach { it.onConnecting(channel) }
@@ -504,7 +525,7 @@ abstract class Communicator<ConnectionDescriptor>(internal val channel: Channel)
 	final override fun disconnect() = disconnectInternal(true)
 
 	private fun disconnectInternal(stayDisconnected: Boolean) {
-		LOGGER.debug("${channel} ${connectionDescriptor}> Disconnecting ...")
+		LOGGER.debug("${logTag} Disconnecting ...")
 		if (stayDisconnected) connectionRequested = false
 		state = State.DISCONNECTING
 		messageQueue.clear()
@@ -515,7 +536,7 @@ abstract class Communicator<ConnectionDescriptor>(internal val channel: Channel)
 			outboundThread?.takeIf { it.isAlive }?.interrupt()
 			cleanUpConnection()
 		} catch (e: IOException) {
-			LOGGER.error("${channel} ${connectionDescriptor}> ${e.message}", e)
+			LOGGER.error("${logTag} ${e.message}", e)
 		} finally {
 			state = State.DISCONNECTED
 			listeners.forEach { it.onDisconnect(channel) }
@@ -526,7 +547,7 @@ abstract class Communicator<ConnectionDescriptor>(internal val channel: Channel)
 	/** Shuts the communicator down completely. */
 	final override fun shutdown() {
 		disconnectInternal(stayDisconnected = true)
-		LOGGER.debug("${channel} ${connectionDescriptor}> Shutting down communicator ...")
+		LOGGER.debug("${logTag} Shutting down communicator ...")
 		connectorThread?.takeIf { it.isAlive }?.interrupt()
 		connectorExecutor.shutdown()
 		connectorExecutor.awaitTermination(500, TimeUnit.MILLISECONDS)
@@ -547,7 +568,7 @@ abstract class Communicator<ConnectionDescriptor>(internal val channel: Channel)
 		val chksumCalculated = this.toList().subList(1, this.size).toByteArray().calculateChecksum()
 		if ((CRC_PRINT || this.getOrNull(1)?.toInt() != MessageKind.CRC.code)
 			&& (IDD_PING_PRINT || this.getOrNull(1)?.toInt() != MessageKind.IDD.code || this.size > 3)) {
-			return "${channel} ${connectionDescriptor}> ${direction}" +
+			return "${logTag} ${direction}" +
 					"[${checksum?.let { "0x%02X".format(it) } ?: "----"}/${"0x%02X".format(chksumCalculated)}]" +
 					" ${MessageKind.values().find { it.code == this.getOrNull(1)?.toInt() } ?: MessageKind.UNKNOWN}" +
 					(this.getOrNull(1)?.let { "(0x%02X)".format(it) } ?: "") +

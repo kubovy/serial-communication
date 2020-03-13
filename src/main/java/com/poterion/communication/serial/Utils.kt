@@ -19,6 +19,8 @@
 
 package com.poterion.communication.serial
 
+import com.poterion.communication.serial.payload.ColorOrder
+import java.awt.Color
 import java.nio.charset.Charset
 
 /**
@@ -75,3 +77,13 @@ fun Int.toByteArray() = listOf(this).toByteArray()
 fun List<Int>.toByteArray() = this.map { it.toByte() }.toByteArray()
 
 fun IntArray.toString(charset: Charset) = map { it.toByte() }.toByteArray().toString(charset)
+
+fun Color.toComponents(colorOrder: ColorOrder) = when (colorOrder) {
+	ColorOrder.RGB -> intArrayOf(red, green, blue)
+	ColorOrder.GRB -> intArrayOf(green, red, blue)
+}
+
+fun IntArray.toColor(colorOrder: ColorOrder, from: Int = 0) = when (colorOrder) {
+	ColorOrder.RGB -> Color(this[from], this[from + 1], this[from + 2])
+	ColorOrder.GRB -> Color(this[from + 1], this[from], this[from + 2])
+}

@@ -18,9 +18,9 @@
 @file:Suppress("unused")
 package com.poterion.communication.serial.extensions
 
+import com.poterion.communication.serial.MessageKind
 import com.poterion.communication.serial.communicator.Channel
 import com.poterion.communication.serial.communicator.Communicator
-import com.poterion.communication.serial.MessageKind
 import com.poterion.communication.serial.listeners.BluetoothCommunicatorListener
 import com.poterion.communication.serial.payload.BluetoothPairingMode
 import com.poterion.communication.serial.toByteArray
@@ -64,6 +64,12 @@ class BluetoothCommunicatorExtension<ConnectionDescriptor>(communicator: Communi
 	 */
 	fun sendBluetoothSettings(pairingMode: BluetoothPairingMode, pin: String, name: String) =
 		send(MessageKind.BLUETOOTH, listOf(pairingMode.code).toByteArray() +
-				pin.replace("[^\\d]".toRegex(), "").padEnd(6, Char.MIN_VALUE).substring(0, 6).toByteArray(Charsets.UTF_8) +
-				name.replace("[^\\w]".toRegex(), "").padEnd(16, Char.MIN_VALUE).substring(0, 16).toByteArray(Charsets.UTF_8))
+				pin.replace("[^\\d]".toRegex(), "")
+						.padEnd(6, Char.MIN_VALUE)
+						.substring(0, 6)
+						.toByteArray(Charsets.UTF_8) +
+				name.replace("[^\\w\\-_]".toRegex(), "")
+						.padEnd(16, Char.MIN_VALUE)
+						.substring(0, 16)
+						.toByteArray(Charsets.UTF_8))
 }

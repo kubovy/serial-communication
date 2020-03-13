@@ -39,7 +39,7 @@ class BluetoothCommunicator : Communicator<BluetoothCommunicator.Descriptor>(
 	 * @param address Bluetooth address
 	 * @param channel Channel
 	 */
-	data class Descriptor(val address: String, val channel: Int) {
+	data class Descriptor(val address: String, val channel: Int, var name: String? = null) {
 		override fun toString(): String = "${address}[${channel}]"
 	}
 

@@ -115,7 +115,7 @@ class USBCommunicator : Communicator<USBCommunicator.Descriptor>(
 										//LOGGER.debug("USB> 0x%02X: checksum OK (0x%02X)".format(byte, this.chksum))
 										messageBuffer.add(buffer.sliceArray(0 until this.length))
 									} else {
-										LOGGER.warn("USB> 0x%02X: Wrong checksum (0x%02X)".format(byte, this.chksum))
+										LOGGER.warn("${logTag} 0x%02X: Wrong checksum (0x%02X)".format(byte, this.chksum))
 									}
 									this.state =
 										State.IDLE
@@ -144,7 +144,7 @@ class USBCommunicator : Communicator<USBCommunicator.Descriptor>(
 							SerialPort.PARITY_NONE)
 					it.addEventListener(serialPortEventListener)
 				} catch (e: SerialPortException) {
-					LOGGER.error(e.message)
+					LOGGER.error("${logTag} ${e.message}")
 				}
 			} != null
 

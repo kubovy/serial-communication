@@ -18,7 +18,7 @@
 @file:Suppress("unused")
 package com.poterion.communication.serial.extensions
 
-import com.poterion.communication.serial.*
+import com.poterion.communication.serial.MessageKind
 import com.poterion.communication.serial.communicator.Channel
 import com.poterion.communication.serial.communicator.Communicator
 import com.poterion.communication.serial.communicator.CommunicatorBase
@@ -73,7 +73,7 @@ abstract class CommunicatorExtension<ConnectionDescriptor>(
 
 	override fun unregister(listener: CommunicatorListener): Boolean = communicator.unregister(listener)
 
-	final override fun connect(descriptor: ConnectionDescriptor): Boolean = communicator.connect(descriptor)
+	final override fun connect(descriptor: ConnectionDescriptor?): Boolean = communicator.connect(descriptor)
 
 	final override fun disconnect() = communicator.disconnect()
 
@@ -104,6 +104,9 @@ abstract class CommunicatorExtension<ConnectionDescriptor>(
 	 * @param message Received message (whole, including CRC and KIND bytes).
 	 */
 	abstract fun onMessageKindReceived(channel: Channel, messageKind: MessageKind, message: IntArray)
+
+	override fun onMessagePrepare(channel: Channel) {
+	}
 
 	override fun onMessageSent(channel: Channel, message: IntArray, remaining: Int) {
 	}

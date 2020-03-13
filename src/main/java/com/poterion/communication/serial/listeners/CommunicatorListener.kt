@@ -18,7 +18,7 @@
 package com.poterion.communication.serial.listeners
 
 import com.poterion.communication.serial.communicator.Channel
-import com.poterion.communication.serial.payload.*
+import com.poterion.communication.serial.payload.DeviceCapabilities
 
 /**
  * Communication listener interface enables other part of the application to use the
@@ -62,6 +62,13 @@ interface CommunicatorListener {
 	 * @param message Received message
 	 */
 	fun onMessageReceived(channel: Channel, message: IntArray)
+
+	/**
+	 * On message preparation.
+	 *
+	 * @param channel Channel triggering the event.
+	 */
+	fun onMessagePrepare(channel: Channel)
 
 	/**
 	 * On message sent callback.

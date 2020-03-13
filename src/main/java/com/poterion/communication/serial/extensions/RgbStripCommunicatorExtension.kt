@@ -18,37 +18,43 @@
 @file:Suppress("unused", "MemberVisibilityCanBePrivate")
 package com.poterion.communication.serial.extensions
 
+import com.poterion.communication.serial.MessageKind
 import com.poterion.communication.serial.communicator.Channel
 import com.poterion.communication.serial.communicator.Communicator
-import com.poterion.communication.serial.MessageKind
 import com.poterion.communication.serial.listeners.RgbStripCommunicatorListener
+import com.poterion.communication.serial.payload.ColorOrder
 import com.poterion.communication.serial.payload.RgbPattern
 import com.poterion.communication.serial.payload.RgbStripConfiguration
+import com.poterion.communication.serial.toColor
+import com.poterion.communication.serial.toComponents
 import java.awt.Color
 
 /**
  * RGB strip communicator extension extends the default [Communicator] with [MessageKind.RGB] capabilities.
  * To catch also incoming messages [register] a [RgbStripCommunicatorListener].
  *
+ * @param communicator Communicator to extend
+ * @param colorOrder Color order getter
  * @see MessageKind.RGB
  * @author Jan Kubovy [jan@kubovy.eu]
  */
-class RgbStripCommunicatorExtension<ConnectionDescriptor>(communicator: Communicator<ConnectionDescriptor>) :
-	CommunicatorExtension<ConnectionDescriptor>(communicator) {
+class RgbStripCommunicatorExtension<ConnectionDescriptor>(communicator: Communicator<ConnectionDescriptor>,
+														  private val colorOrder: (Int) -> ColorOrder) :
+		CommunicatorExtension<ConnectionDescriptor>(communicator) {
 
 	override fun onMessageKindReceived(channel: Channel, messageKind: MessageKind, message: IntArray) {
 		if (messageKind == MessageKind.RGB) when (message.size) {
 			3 -> listeners
-				.filterIsInstance<RgbStripCommunicatorListener>()
-				.forEach { it.onRgbStripCountChanged(channel, message[2]) }
+					.filterIsInstance<RgbStripCommunicatorListener>()
+					.forEach { it.onRgbStripCountChanged(channel, message[2]) }
 			14 -> listeners
-				.filterIsInstance<RgbStripCommunicatorListener>()
-				.forEach {
+					.filterIsInstance<RgbStripCommunicatorListener>()
+					.forEach {
 					val config = RgbStripConfiguration(
-						RgbPattern.values().find { p -> p.code == message[5] } ?: RgbPattern.OFF,
-						Color(message[6], message[7], message[8]),
-						((message[9] and 0xFF) shl 8) or (message[10] and 0xFF),
-						message[11], message[12], message[13])
+							RgbPattern.values().find { p -> p.code == message[5] } ?: RgbPattern.OFF,
+							message.toColor(colorOrder(message[2]), 6),
+							((message[9] and 0xFF) shl 8) or (message[10] and 0xFF),
+							message[11], message[12], message[13])
 					it.onRgbStripConfiguration(channel, message[2], message[3], message[4], config)
 				}
 		}
@@ -87,7 +93,7 @@ class RgbStripCommunicatorExtension<ConnectionDescriptor>(communicator: Communic
 	fun sendRgbStripConfiguration(num: Int, pattern: RgbPattern, color: Color, delay: Int, min: Int, max: Int,
 								  timeout: Int, replace: Boolean = false) =
 		sendBytes(MessageKind.RGB, num, pattern.code or (if (replace) 0x80 else 0x00),
-			color.red, color.green, color.blue, (delay shr 8) and 0xFF, delay and 0xFF, min, max, timeout)
+				*color.toComponents(colorOrder(num)), (delay shr 8) and 0xFF, delay and 0xFF, min, max, timeout)
 
 	/**
 	 * Send RGB strip configuration.

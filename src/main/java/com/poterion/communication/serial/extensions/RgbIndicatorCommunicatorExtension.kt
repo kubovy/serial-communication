@@ -18,37 +18,43 @@
 @file:Suppress("unused", "MemberVisibilityCanBePrivate")
 package com.poterion.communication.serial.extensions
 
+import com.poterion.communication.serial.MessageKind
 import com.poterion.communication.serial.communicator.Channel
 import com.poterion.communication.serial.communicator.Communicator
-import com.poterion.communication.serial.MessageKind
 import com.poterion.communication.serial.listeners.RgbIndicatorCommunicatorListener
+import com.poterion.communication.serial.payload.ColorOrder
 import com.poterion.communication.serial.payload.RgbIndicatorConfiguration
 import com.poterion.communication.serial.payload.RgbPattern
+import com.poterion.communication.serial.toColor
+import com.poterion.communication.serial.toComponents
 import java.awt.Color
 
 /**
  * RGB indicators communicator extension extends the default [Communicator] with [MessageKind.INDICATORS] capabilities.
  * To catch also incoming messages [register] a [RgbIndicatorCommunicatorListener].
  *
+ * @param communicator Communicator to extend
+ * @param colorOrder Color order getter
  * @see MessageKind.INDICATORS
  * @author Jan Kubovy [jan@kubovy.eu]
  */
-class RgbIndicatorCommunicatorExtension<ConnectionDescriptor>(communicator: Communicator<ConnectionDescriptor>) :
-	CommunicatorExtension<ConnectionDescriptor>(communicator) {
+class RgbIndicatorCommunicatorExtension<ConnectionDescriptor>(communicator: Communicator<ConnectionDescriptor>,
+															  private val colorOrder: (Int) -> ColorOrder) :
+		CommunicatorExtension<ConnectionDescriptor>(communicator) {
 
 	override fun onMessageKindReceived(channel: Channel, messageKind: MessageKind, message: IntArray) {
 		if (messageKind == MessageKind.INDICATORS) when (message.size) {
 			3 -> listeners
-				.filterIsInstance<RgbIndicatorCommunicatorListener>()
-				.forEach { it.onRgbIndicatorCountChanged(channel, message[2]) }
+					.filterIsInstance<RgbIndicatorCommunicatorListener>()
+					.forEach { it.onRgbIndicatorCountChanged(channel, message[2]) }
 			13 -> listeners
-				.filterIsInstance<RgbIndicatorCommunicatorListener>()
-				.forEach {
+					.filterIsInstance<RgbIndicatorCommunicatorListener>()
+					.forEach {
 					val config = RgbIndicatorConfiguration(
-						RgbPattern.values().find { p -> p.code == message[5] } ?: RgbPattern.OFF,
-						Color(message[6], message[7], message[8]),
-						((message[9] and 0xFF) shl 8) or (message[10] and 0xFF),
-						message[11], message[12])
+							RgbPattern.values().find { p -> p.code == message[5] } ?: RgbPattern.OFF,
+							message.toColor(colorOrder(message[2]), 6),
+							((message[9] and 0xFF) shl 8) or (message[10] and 0xFF),
+							message[11], message[12])
 					it.onRgbIndicatorConfiguration(channel, message[2], message[3], message[4], config)
 				}
 		}
@@ -78,7 +84,7 @@ class RgbIndicatorCommunicatorExtension<ConnectionDescriptor>(communicator: Comm
 	 * @see MessageKind.INDICATORS
 	 */
 	fun sendRgbIndicatorSetAll(num: Int, color: Color) =
-		sendBytes(MessageKind.INDICATORS, num, color.red, color.green, color.blue)
+			sendBytes(MessageKind.INDICATORS, num, *color.toComponents(colorOrder(num)))
 
 	/**
 	 * Send RGB indicator set request.
@@ -97,7 +103,7 @@ class RgbIndicatorCommunicatorExtension<ConnectionDescriptor>(communicator: Comm
 	fun sendRgbIndicatorSet(num: Int, led: Int, pattern: RgbPattern, color: Color, delay: Int, min: Int, max: Int,
 							replace: Boolean = false) =
 		sendBytes(MessageKind.INDICATORS, num, led, pattern.code or (if (replace) 0x80 else 0x00),
-			color.red, color.green, color.blue, (delay shr 8) and 0xFF, delay and 0xFF, min, max)
+				*color.toComponents(colorOrder(num)), (delay shr 8) and 0xFF, delay and 0xFF, min, max)
 
 	/**
 	 * Send RGB indicator set request.

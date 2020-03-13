@@ -29,19 +29,19 @@ import com.poterion.communication.serial.payload.DeviceCapabilities
 abstract class CommunicatorBase<ConnectionDescriptor> {
 
 	/** Whether the device is in [State.CONNECTED] or not */
-	final val isConnected: Boolean
+	val isConnected: Boolean
 		get() = state == State.CONNECTED
 
 	/** Whether the device is in [State.CONNECTING] or not */
-	final val isConnecting: Boolean
+	val isConnecting: Boolean
 		get() = state == State.CONNECTING
 
 	/** Whether the device is in [State.DISCONNECTING] or not */
-	final val isDisconnecting: Boolean
+	val isDisconnecting: Boolean
 		get() = state == State.DISCONNECTING
 
 	/** Whether the device is in [State.DISCONNECTED] or not */
-	final val isDisconnected: Boolean
+	val isDisconnected: Boolean
 		get() = state == State.DISCONNECTED
 
 	/** Current state of the connection to the device. */
@@ -57,7 +57,10 @@ abstract class CommunicatorBase<ConnectionDescriptor> {
 	internal open val listeners = mutableListOf<CommunicatorListener>()
 
 	/** Connection descriptor. */
-	protected var connectionDescriptor: ConnectionDescriptor? = null
+	var connectionDescriptor: ConnectionDescriptor? = null
+		set(value) {
+			if (value == null || canConnect(value)) field = value
+		}
 
 	/**
 	 * Whether the communicator can connect or not.
@@ -97,11 +100,11 @@ abstract class CommunicatorBase<ConnectionDescriptor> {
 	 * @param kind Message kind.
 	 * @param message Message.
 	 */
-	final fun send(kind: MessageKind, message: ByteArray = byteArrayOf()) = sendBytes(kind, *message)
+	fun send(kind: MessageKind, message: ByteArray = byteArrayOf()) = sendBytes(kind, *message)
 
 	abstract fun sendBytes(kind: MessageKind, vararg message: Byte)
 
-	final fun sendBytes(kind: MessageKind, vararg message: Int) = sendBytes(kind, *message.map { it.toByte() }.toByteArray())
+	fun sendBytes(kind: MessageKind, vararg message: Int) = sendBytes(kind, *message.map { it.toByte() }.toByteArray())
 
 	/**
 	 * Register a new listener.
@@ -124,7 +127,7 @@ abstract class CommunicatorBase<ConnectionDescriptor> {
 	 *
 	 * @param descriptor Descriptor of the device.
 	 */
-	abstract fun connect(descriptor: ConnectionDescriptor): Boolean
+	abstract fun connect(descriptor: ConnectionDescriptor? = null): Boolean
 
 	/** Disconnects from a device. */
 	abstract fun disconnect()
