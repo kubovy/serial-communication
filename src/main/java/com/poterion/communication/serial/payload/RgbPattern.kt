@@ -22,17 +22,17 @@ package com.poterion.communication.serial.payload
  *
  * @author Jan Kubovy [jan@kubovy.eu]
  */
-enum class RgbPattern(val code: Int) {
+enum class RgbPattern(val code: Int, val delay: Int?, val min: Int?, val max: Int?, val timeout: Int?) {
 	/** Off */
-	OFF(0x00),
+	OFF(0x00, null, null, null, null),
 	/** Simple light */
-	LIGHT(0x01),
+	LIGHT(0x01, 1000, null, 255, 1),
 	/** Blink 50/50 */
-	BLINK(0x02),
+	BLINK(0x02, 500, 0, 255, 3),
 	/** Fade in 0>1 */
-	FADE_IN(0x03),
+	FADE_IN(0x03, 200, 0, 255, 3),
 	/** Fade out 1>0 */
-	FADE_OUT(0x04),
+	FADE_OUT(0x04, 200, 0, 255, 3),
 	/** Fade toggle 0>1>0 */
-	FADE_INOUT(0x05)
+	FADE_INOUT(0x05, 200, 0, 255, 3)
 }
