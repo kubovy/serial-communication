@@ -80,15 +80,19 @@ abstract class CommunicatorExtension<ConnectionDescriptor>(
 	final override fun shutdown() = communicator.shutdown()
 
 	override fun onConnecting(channel: Channel) {
+		// noop
 	}
 
 	override fun onConnect(channel: Channel) {
+		// noop
 	}
 
 	override fun onConnectionReady(channel: Channel) {
+		// noop
 	}
 
 	override fun onDisconnect(channel: Channel) {
+		// noop
 	}
 
 	final override fun onMessageReceived(channel: Channel, message: IntArray) {
@@ -106,14 +110,18 @@ abstract class CommunicatorExtension<ConnectionDescriptor>(
 	abstract fun onMessageKindReceived(channel: Channel, messageKind: MessageKind, message: IntArray)
 
 	override fun onMessagePrepare(channel: Channel) {
+		// noop
 	}
 
 	override fun onMessageSent(channel: Channel, message: IntArray, remaining: Int) {
+		// noop
 	}
 
 	override fun onDeviceCapabilitiesChanged(channel: Channel, capabilities: DeviceCapabilities) {
+		// noop
 	}
 
 	override fun onDeviceNameChanged(channel: Channel, name: String) {
+		// noop
 	}
 }

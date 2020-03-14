@@ -15,6 +15,7 @@
  * License along with this program.  If not, see                              *
  * <http://www.gnu.org/licenses/>.                                            *
  ******************************************************************************/
+@file:Suppress("unused")
 package com.poterion.communication.serial.scanner
 
 import com.poterion.communication.serial.communicator.BluetoothCommunicator

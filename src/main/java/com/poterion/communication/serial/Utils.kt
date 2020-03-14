@@ -16,7 +16,6 @@
  * <http://www.gnu.org/licenses/>.                                            *
  ******************************************************************************/
 @file:Suppress("unused")
-
 package com.poterion.communication.serial
 
 import com.poterion.communication.serial.payload.ColorOrder

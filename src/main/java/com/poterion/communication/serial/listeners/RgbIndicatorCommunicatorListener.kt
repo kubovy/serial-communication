@@ -18,6 +18,7 @@
 package com.poterion.communication.serial.listeners
 
 import com.poterion.communication.serial.communicator.Channel
+import com.poterion.communication.serial.payload.DeviceCapabilities
 import com.poterion.communication.serial.payload.RgbIndicatorConfiguration
 
 /**
@@ -48,4 +49,40 @@ interface RgbIndicatorCommunicatorListener: CommunicatorListener {
 	 */
 	fun onRgbIndicatorConfiguration(channel: Channel, num: Int, count: Int, index: Int,
 									configuration: RgbIndicatorConfiguration)
+
+	override fun onConnecting(channel: Channel) {
+		// noop
+	}
+
+	override fun onConnect(channel: Channel) {
+		// noop
+	}
+
+	override fun onConnectionReady(channel: Channel) {
+		// noop
+	}
+
+	override fun onDisconnect(channel: Channel) {
+		// noop
+	}
+
+	override fun onMessageReceived(channel: Channel, message: IntArray) {
+		// noop
+	}
+
+	override fun onMessagePrepare(channel: Channel) {
+		// noop
+	}
+
+	override fun onMessageSent(channel: Channel, message: IntArray, remaining: Int) {
+		// noop
+	}
+
+	override fun onDeviceCapabilitiesChanged(channel: Channel, capabilities: DeviceCapabilities) {
+		// noop
+	}
+
+	override fun onDeviceNameChanged(channel: Channel, name: String) {
+		// noop
+	}
 }

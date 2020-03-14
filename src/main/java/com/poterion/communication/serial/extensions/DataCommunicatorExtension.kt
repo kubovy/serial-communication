@@ -47,6 +47,7 @@ class DataCommunicatorExtension<ConnectionDescriptor>(communicator: Communicator
 						(message[5] to message[6]).toDoubleInt(), message.copyOfRange(7, message.size))
 				}
 			else -> {
+				// noop
 			}
 		}
 	}
