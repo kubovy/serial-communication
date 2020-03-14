@@ -38,8 +38,10 @@ import java.awt.Color
  * @see MessageKind.LIGHT
  * @author Jan Kubovy [jan@kubovy.eu]
  */
-class RgbLightCommunicatorExtension<ConnectionDescriptor>(communicator: Communicator<ConnectionDescriptor>,
-														  private val colorOrder: (Int) -> ColorOrder) :
+class RgbLightCommunicatorExtension<ConnectionDescriptor>(
+		communicator: Communicator<ConnectionDescriptor>,
+		private val colorOrder: (Int) -> ColorOrder = { ColorOrder.RGB }) :
+
 		CommunicatorExtension<ConnectionDescriptor>(communicator) {
 
 	override fun onMessageKindReceived(channel: Channel, messageKind: MessageKind, message: IntArray) {
