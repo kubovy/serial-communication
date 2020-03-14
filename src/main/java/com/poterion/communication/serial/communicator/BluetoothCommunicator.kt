@@ -95,7 +95,7 @@ class BluetoothCommunicator : Communicator<BluetoothCommunicator.Descriptor>(
 	override fun nextMessage(): ByteArray? {
 		val buffer = ByteArray(256)
 		val length = inputStream?.read(buffer) ?: 0
-		return buffer.copyOfRange(0, length)
+		return buffer.takeIf { length > 0 }?.copyOfRange(0, length)
 	}
 
 	override fun sendMessage(data: ByteArray) {
