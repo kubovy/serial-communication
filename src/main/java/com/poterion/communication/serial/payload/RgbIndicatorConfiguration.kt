@@ -17,15 +17,25 @@
  ******************************************************************************/
 package com.poterion.communication.serial.payload
 
-import java.awt.Color
+import com.fasterxml.jackson.annotation.JsonIgnore
+import com.fasterxml.jackson.annotation.JsonProperty
+import com.poterion.communication.serial.toHex
+import com.poterion.communication.serial.toRGBColor
 
 /**
  * RGB indicators configuration.
  *
  * @author Jan Kubovy [jan@kubovy.eu]
  */
-data class RgbIndicatorConfiguration(val pattern: RgbPattern,
-									 val color: Color,
-									 val delay: Int,
-									 val minimum: Int,
-									 val maximum: Int)
+data class RgbIndicatorConfiguration(val pattern: RgbPattern = RgbPattern.OFF,
+									 @field:JsonProperty("color") private val _color: String = "#000000",
+									 val delay: Int = 1000,
+									 val minimum: Int = 0,
+									 val maximum: Int = 255) {
+
+	constructor(pattern: RgbPattern, color: RgbColor, delay: Int, minimum: Int, maximum: Int) :
+			this(pattern, color.toHex(), delay, minimum, maximum)
+
+	val color: RgbColor
+		@JsonIgnore get() = _color.toRGBColor() ?: RgbColor()
+}

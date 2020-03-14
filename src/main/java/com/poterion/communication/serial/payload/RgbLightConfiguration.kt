@@ -17,24 +17,55 @@
  ******************************************************************************/
 package com.poterion.communication.serial.payload
 
-import java.awt.Color
+import com.fasterxml.jackson.annotation.JsonIgnore
+import com.fasterxml.jackson.annotation.JsonProperty
+import com.poterion.communication.serial.toHex
+import com.poterion.communication.serial.toRGBColor
 
 /**
  * RGB light configuration.
  *
  * @author Jan Kubovy [jan@kubovy.eu]
  */
-data class RgbLightConfiguration(val pattern: RgbLightPattern,
-								 val color1: Color,
-								 val color2: Color,
-								 val color3: Color,
-								 val color4: Color,
-								 val color5: Color,
-								 val color6: Color,
-								 val color7: Color,
-								 val delay: Int,
-								 val width: Int,
-								 val fading: Int,
-								 val minimum: Int,
-								 val maximum: Int,
-								 val timeout: Int)
+data class RgbLightConfiguration(val pattern: RgbLightPattern = RgbLightPattern.OFF,
+								 @field:JsonProperty("color1") private val _color1: String = "#000000",
+								 @field:JsonProperty("color2") private val _color2: String = "#000000",
+								 @field:JsonProperty("color3") private val _color3: String = "#000000",
+								 @field:JsonProperty("color4") private val _color4: String = "#000000",
+								 @field:JsonProperty("color5") private val _color5: String = "#000000",
+								 @field:JsonProperty("color6") private val _color6: String = "#000000",
+								 @field:JsonProperty("color7") private val _color7: String = "#000000",
+								 val delay: Int = RgbLightPattern.OFF.delay ?: 1000,
+								 val width: Int = RgbLightPattern.OFF.width ?: 0,
+								 val fading: Int = RgbLightPattern.OFF.fading ?: 0,
+								 val minimum: Int = RgbLightPattern.OFF.min ?: 0,
+								 val maximum: Int = RgbLightPattern.OFF.max ?: 255,
+								 val timeout: Int = RgbLightPattern.OFF.timeout ?: 50) {
+
+	constructor(pattern: RgbLightPattern, color1: RgbColor, color2: RgbColor, color3: RgbColor, color4: RgbColor,
+				color5: RgbColor, color6: RgbColor, color7: RgbColor, delay: Int, width: Int, fading: Int,
+				minimum: Int, maximum: Int, timeout: Int) :
+			this(pattern, color1.toHex(), color2.toHex(), color3.toHex(), color4.toHex(), color5.toHex(),
+					color6.toHex(), color7.toHex(), delay, width, fading, minimum, maximum, timeout)
+
+	val color1: RgbColor
+		@JsonIgnore get() = _color1.toRGBColor() ?: RgbColor()
+
+	val color2: RgbColor
+		@JsonIgnore get() = _color2.toRGBColor() ?: RgbColor()
+
+	val color3: RgbColor
+		@JsonIgnore get() = _color3.toRGBColor() ?: RgbColor()
+
+	val color4: RgbColor
+		@JsonIgnore get() = _color4.toRGBColor() ?: RgbColor()
+
+	val color5: RgbColor
+		@JsonIgnore get() = _color5.toRGBColor() ?: RgbColor()
+
+	val color6: RgbColor
+		@JsonIgnore get() = _color6.toRGBColor() ?: RgbColor()
+
+	val color7: RgbColor
+		@JsonIgnore get() = _color7.toRGBColor() ?: RgbColor()
+}

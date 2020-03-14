@@ -19,8 +19,10 @@
 package com.poterion.communication.serial
 
 import com.poterion.communication.serial.payload.ColorOrder
-import java.awt.Color
+import com.poterion.communication.serial.payload.RgbColor
+import javafx.scene.paint.Color
 import java.nio.charset.Charset
+import kotlin.math.roundToInt
 
 /**
  * Converts 8 bools to one byte.
@@ -34,6 +36,7 @@ import java.nio.charset.Charset
  * @param b1 Bit 1
  * @param b0 Bit 0
  * @return Composed byte.
+ * @author Jan Kubovy [jan@kubovy.eu]
  */
 fun bools2Byte(b7: Boolean, b6: Boolean, b5: Boolean, b4: Boolean, b3: Boolean, b2: Boolean, b1: Boolean, b0: Boolean) =
 	(if (b7) 0b10000000 else 0b00000000) or
@@ -50,6 +53,7 @@ fun bools2Byte(b7: Boolean, b6: Boolean, b5: Boolean, b4: Boolean, b3: Boolean, 
  *
  * @param byte Byte to convert.
  * @return List containing 8 bools corresponding to the 8 bits in a byte.
+ * @author Jan Kubovy [jan@kubovy.eu]
  */
 fun byte2Bools(byte: Int) = listOf(
 		(byte and 0b00000001) > 0,
@@ -63,26 +67,119 @@ fun byte2Bools(byte: Int) = listOf(
 
 /**
  * Calculates a checksum.
+ * @author Jan Kubovy [jan@kubovy.eu]
  */
 fun ByteArray.calculateChecksum() =
 	(map { it.toInt() }.takeIf { it.isNotEmpty() }?.reduce { acc, i -> (acc + i) and 0xFF } ?: 0) and 0xFF
 
+/**
+ * Convert a pair of bytes to a double byte.
+ * @author Jan Kubovy [jan@kubovy.eu]
+ */
 fun Pair<Byte, Byte>.toInt() = let { first.toInt() to second.toInt() }.toDoubleInt()
 
+/**
+ * Convert a pair of bytes, each represented by an [Int], to an double byte.
+ * @author Jan Kubovy [jan@kubovy.eu]
+ */
 fun Pair<Int, Int>.toDoubleInt() = let { ((it.first shl 8) and 0xFF00) or (it.second and 0xFF) }
 
+/**
+ * Convert a byte, represented by an [Int], to a byte array.
+ * @author Jan Kubovy [jan@kubovy.eu]
+ */
 fun Int.toByteArray() = listOf(this).toByteArray()
 
+/**
+ * Convert a list of bytes, represented by [Int], to byte array.
+ * @author Jan Kubovy [jan@kubovy.eu]
+ */
 fun List<Int>.toByteArray() = this.map { it.toByte() }.toByteArray()
 
+/**
+ * Convert a [IntArray], each [Int] representing a [Byte], to ASCII encoded string.
+ * @author Jan Kubovy [jan@kubovy.eu]
+ */
 fun IntArray.toString(charset: Charset) = map { it.toByte() }.toByteArray().toString(charset)
 
-fun Color.toComponents(colorOrder: ColorOrder = ColorOrder.RGB) = when (colorOrder) {
+/**
+ * Converts a hex-encoded color to [RgbColor].
+ * @author Jan Kubovy [jan@kubovy.eu]
+ */
+fun String.toRGBColor(): RgbColor? = "^#?([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})".toRegex()
+		.matchEntire(this)
+		?.groupValues
+		?.mapNotNull { it.toIntOrNull(16) }
+		?.takeIf { it.size == 3 }
+		?.let { RgbColor(it[0], it[1], it[2]) }
+
+/**
+ * Coverts a hex-encoded color to [Color].
+ * @author Jan Kubovy [jan@kubovy.eu]
+ */
+fun String.toColor(): Color? = toRGBColor()?.toColor()
+
+/**
+ * Converts a [Color] to [RgbColor].
+ * @author Jan Kubovy [jan@kubovy.eu]
+ */
+fun Color.toRGBColor(): RgbColor = RgbColor(red.relativeToByte(), green.relativeToByte(), blue.relativeToByte())
+
+/**
+ * Converts a [Color] to hex-encoded color string.
+ * @author Jan Kubovy [jan@kubovy.eu]
+ */
+fun Color.toHex(prefix: String = "#") = toRGBColor().toHex(prefix)
+
+/**
+ * Converts a [java.awt.Color] to [RgbColor].
+ * @author Jan Kubovy [jan@kubovy.eu]
+ */
+fun java.awt.Color.toRGBColor(): RgbColor = RgbColor(red, green, blue)
+
+/**
+ * Converts a [java.awt.Color] to hex-encoded color string.
+ * @author Jan Kubovy [jan@kubovy.eu]
+ */
+fun java.awt.Color.toHex(prefix: String = "#") = toRGBColor().toHex(prefix)
+
+/**
+ * Converts [RgbColor] to [Color].
+ * @author Jan Kubovy [jan@kubovy.eu]
+ */
+fun RgbColor.toColor() = Color.rgb(red, green, blue)
+
+/**
+ * Converts [RgbColor] to [java.awt.Color].
+ * @author Jan Kubovy [jan@kubovy.eu]
+ */
+fun RgbColor.toAwtColor() = java.awt.Color(red, green, blue)
+
+/**
+ * Converts [RgbColor] to an array of RGB components.
+ * @param colorOrder [ColorOrder]
+ * @author Jan Kubovy [jan@kubovy.eu]
+ */
+fun RgbColor.toComponents(colorOrder: ColorOrder = ColorOrder.RGB) = when (colorOrder) {
 	ColorOrder.RGB -> intArrayOf(red, green, blue)
 	ColorOrder.GRB -> intArrayOf(green, red, blue)
 }
 
-fun IntArray.toColor(colorOrder: ColorOrder = ColorOrder.RGB, from: Int = 0) = when (colorOrder) {
-	ColorOrder.RGB -> Color(this[from], this[from + 1], this[from + 2])
-	ColorOrder.GRB -> Color(this[from + 1], this[from], this[from + 2])
+/**
+ * Converts an array of RGB components to [RgbColor]
+ * @param colorOrder [ColorOrder]
+ * @param from Starting at index (default `0`)
+ * @author Jan Kubovy [jan@kubovy.eu]
+ */
+fun IntArray.toRgbColor(colorOrder: ColorOrder = ColorOrder.RGB, from: Int = 0) = when (colorOrder) {
+	ColorOrder.RGB -> RgbColor(this[from], this[from + 1], this[from + 2])
+	ColorOrder.GRB -> RgbColor(this[from + 1], this[from], this[from + 2])
 }
+
+/**
+ * Converts [RgbColor] to hex-encoded color string.
+ * @author Jan Kubovy [jan@kubovy.eu]
+ */
+fun RgbColor.toHex(prefix: String = "#") = listOf(red, green, blue).joinToString("", prefix) { "%02X".format(it) }
+
+private fun Double.relativeToByte(): Int = (this * 255.0).roundToInt()

@@ -17,26 +17,12 @@
  ******************************************************************************/
 package com.poterion.communication.serial.payload
 
-import com.fasterxml.jackson.annotation.JsonIgnore
-import com.fasterxml.jackson.annotation.JsonProperty
-import com.poterion.communication.serial.toHex
-import com.poterion.communication.serial.toRGBColor
-
 /**
- * RGB strip configuration.
+ * RGB color entity
  *
+ * @param red Red component
+ * @param green Green component
+ * @param blue Blue component
  * @author Jan Kubovy [jan@kubovy.eu]
  */
-data class RgbStripConfiguration(val pattern: RgbPattern = RgbPattern.OFF,
-								 @field:JsonProperty("color") private val _color: String = "#000000",
-								 val delay: Int,
-								 val minimum: Int,
-								 val maximum: Int,
-								 val timeout: Int) {
-
-	constructor(pattern: RgbPattern, color: RgbColor, delay: Int, minimum: Int, maximum: Int, timeout: Int) :
-			this(pattern, color.toHex(), delay, minimum, maximum, timeout)
-
-	val color: RgbColor
-		@JsonIgnore get() = _color.toRGBColor() ?: RgbColor()
-}
+data class RgbColor(var red: Int = 0, var green: Int = 0, var blue: Int = 0)

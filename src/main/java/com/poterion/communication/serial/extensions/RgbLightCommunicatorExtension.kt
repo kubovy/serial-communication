@@ -23,11 +23,12 @@ import com.poterion.communication.serial.communicator.Channel
 import com.poterion.communication.serial.communicator.Communicator
 import com.poterion.communication.serial.listeners.RgbLightCommunicatorListener
 import com.poterion.communication.serial.payload.ColorOrder
+import com.poterion.communication.serial.payload.RgbColor
 import com.poterion.communication.serial.payload.RgbLightConfiguration
 import com.poterion.communication.serial.payload.RgbLightPattern
-import com.poterion.communication.serial.toColor
+import com.poterion.communication.serial.toRgbColor
 import com.poterion.communication.serial.toComponents
-import java.awt.Color
+import com.poterion.communication.serial.toHex
 
 /**
  * RGB light communicator extension extends the default [Communicator] with [MessageKind.LIGHT] capabilities.
@@ -54,13 +55,13 @@ class RgbLightCommunicatorExtension<ConnectionDescriptor>(
 					.forEach {
 					val config = RgbLightConfiguration(
 							RgbLightPattern.values().find { p -> p.code == message[5] } ?: RgbLightPattern.OFF,
-							message.toColor(colorOrder(message[2]), 6),
-							message.toColor(colorOrder(message[2]), 9),
-							message.toColor(colorOrder(message[2]), 12),
-							message.toColor(colorOrder(message[2]), 15),
-							message.toColor(colorOrder(message[2]), 18),
-							message.toColor(colorOrder(message[2]), 21),
-							message.toColor(colorOrder(message[2]), 24),
+							message.toRgbColor(colorOrder(message[2]), 6),
+							message.toRgbColor(colorOrder(message[2]), 9),
+							message.toRgbColor(colorOrder(message[2]), 12),
+							message.toRgbColor(colorOrder(message[2]), 15),
+							message.toRgbColor(colorOrder(message[2]), 18),
+							message.toRgbColor(colorOrder(message[2]), 21),
+							message.toRgbColor(colorOrder(message[2]), 24),
 							((message[27] and 0xFF) shl 8) or (message[28] and 0xFF),
 							message[29], message[30], message[31], message[32], message[33])
 					it.onRgbLightConfiguration(channel, message[2], message[3], message[4], config)
@@ -89,13 +90,13 @@ class RgbLightCommunicatorExtension<ConnectionDescriptor>(
 	 *
 	 * @param num Strip number (1 byte).
 	 * @param pattern [RgbLightPattern].
-	 * @param color1 [Color] 1.
-	 * @param color2 [Color] 2.
-	 * @param color3 [Color] 3.
-	 * @param color4 [Color] 4.
-	 * @param color5 [Color] 5.
-	 * @param color6 [Color] 6.
-	 * @param color7 [Color] 7.
+	 * @param color1 [RgbColor] 1.
+	 * @param color2 [RgbColor] 2.
+	 * @param color3 [RgbColor] 3.
+	 * @param color4 [RgbColor] 4.
+	 * @param color5 [RgbColor] 5.
+	 * @param color6 [RgbColor] 6.
+	 * @param color7 [RgbColor] 7.
 	 * @param delay Delay in ms (2 bytes).
 	 * @param width Width (depends on pattern implementation) (1 byte).
 	 * @param fading Fading (depends on pattern implementation) (1 byte).
@@ -105,9 +106,9 @@ class RgbLightCommunicatorExtension<ConnectionDescriptor>(
 	 *                configuration will be appended on the end of the list.
 	 * @see MessageKind.LIGHT
 	 */
-	fun sendRgbLightSet(num: Int, pattern: RgbLightPattern, color1: Color, color2: Color, color3: Color, color4: Color,
-						color5: Color, color6: Color, color7: Color, delay: Int, width: Int, fading: Int, min: Int,
-						max: Int, timeout: Int, replace: Boolean = false) =
+	fun sendRgbLightSet(num: Int, pattern: RgbLightPattern, color1: RgbColor, color2: RgbColor, color3: RgbColor,
+						color4: RgbColor, color5: RgbColor, color6: RgbColor, color7: RgbColor, delay: Int, width: Int,
+						fading: Int, min: Int, max: Int, timeout: Int, replace: Boolean = false) =
 			sendBytes(MessageKind.LIGHT, num, pattern.code or (if (replace) 0x80 else 0x00),
 					*color1.toComponents(colorOrder(num)),
 					*color2.toComponents(colorOrder(num)),

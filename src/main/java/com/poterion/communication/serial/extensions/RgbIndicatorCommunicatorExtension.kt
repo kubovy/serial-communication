@@ -23,10 +23,12 @@ import com.poterion.communication.serial.communicator.Channel
 import com.poterion.communication.serial.communicator.Communicator
 import com.poterion.communication.serial.listeners.RgbIndicatorCommunicatorListener
 import com.poterion.communication.serial.payload.ColorOrder
+import com.poterion.communication.serial.payload.RgbColor
 import com.poterion.communication.serial.payload.RgbIndicatorConfiguration
 import com.poterion.communication.serial.payload.RgbPattern
-import com.poterion.communication.serial.toColor
+import com.poterion.communication.serial.toRgbColor
 import com.poterion.communication.serial.toComponents
+import com.poterion.communication.serial.toHex
 import java.awt.Color
 
 /**
@@ -54,7 +56,7 @@ class RgbIndicatorCommunicatorExtension<ConnectionDescriptor>(
 					.forEach {
 					val config = RgbIndicatorConfiguration(
 							RgbPattern.values().find { p -> p.code == message[5] } ?: RgbPattern.OFF,
-							message.toColor(colorOrder(message[2]), 6),
+							message.toRgbColor(colorOrder(message[2]), 6),
 							((message[9] and 0xFF) shl 8) or (message[10] and 0xFF),
 							message[11], message[12])
 					it.onRgbIndicatorConfiguration(channel, message[2], message[3], message[4], config)
@@ -82,10 +84,10 @@ class RgbIndicatorCommunicatorExtension<ConnectionDescriptor>(
 	 * Send RGB indicator set all request.
 	 *
 	 * @param num Strip number (1 byte).
-	 * @param color [Color].
+	 * @param color [RgbColor].
 	 * @see MessageKind.INDICATORS
 	 */
-	fun sendRgbIndicatorSetAll(num: Int, color: Color) =
+	fun sendRgbIndicatorSetAll(num: Int, color: RgbColor) =
 			sendBytes(MessageKind.INDICATORS, num, *color.toComponents(colorOrder(num)))
 
 	/**
@@ -94,7 +96,7 @@ class RgbIndicatorCommunicatorExtension<ConnectionDescriptor>(
 	 * @param num Strip number (1 byte).
 	 * @param led LED index (1 byte).
 	 * @param pattern [RgbPattern].
-	 * @param color [Color].
+	 * @param color [RgbColor].
 	 * @param delay Delay in ms (2 bytes).
 	 * @param min Minimum color value (depends on pattern implementation) (1 byte).
 	 * @param max Maximum color value (depends on pattern implementation) (1 byte).
@@ -102,7 +104,7 @@ class RgbIndicatorCommunicatorExtension<ConnectionDescriptor>(
 	 *                configuration will be appended on the end of the list.
 	 * @see MessageKind.INDICATORS
 	 */
-	fun sendRgbIndicatorSet(num: Int, led: Int, pattern: RgbPattern, color: Color, delay: Int, min: Int, max: Int,
+	fun sendRgbIndicatorSet(num: Int, led: Int, pattern: RgbPattern, color: RgbColor, delay: Int, min: Int, max: Int,
 							replace: Boolean = false) =
 		sendBytes(MessageKind.INDICATORS, num, led, pattern.code or (if (replace) 0x80 else 0x00),
 				*color.toComponents(colorOrder(num)), (delay shr 8) and 0xFF, delay and 0xFF, min, max)
