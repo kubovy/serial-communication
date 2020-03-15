@@ -30,8 +30,7 @@ import javax.microedition.io.StreamConnection
  *
  * @author Jan Kubovy [jan@kubovy.eu]
  */
-class BluetoothCommunicator : Communicator<BluetoothCommunicator.Descriptor>(
-	Channel.BLUETOOTH) {
+class BluetoothCommunicator : Communicator<BluetoothCommunicator.Descriptor>(Channel.BLUETOOTH) {
 
 	/**
 	 * Bluetooth connection descriptor.
@@ -64,7 +63,7 @@ class BluetoothCommunicator : Communicator<BluetoothCommunicator.Descriptor>(
 				try {
 					Connector.open(url) as StreamConnection
 				} catch (e: IOException) {
-					LOGGER.error(e.message)
+					LOGGER.error("${logTag} ${e.message}")
 					null
 				}
 			}
@@ -72,7 +71,7 @@ class BluetoothCommunicator : Communicator<BluetoothCommunicator.Descriptor>(
 				//val uuid = UUID("1101", true) // Create a UUID for SPP (1101)
 				streamConnection = it
 				//Wait for client connection
-				LOGGER.debug("Server Started. Waiting for clients to connect...")
+				LOGGER.debug("${logTag} Server Started. Waiting for clients to connect...")
 
 				//val connection = streamConnNotifier!!.acceptAndOpen()
 				//println("Remote device address: " + RemoteDevice.getRemoteDevice(connection).bluetoothAddress)

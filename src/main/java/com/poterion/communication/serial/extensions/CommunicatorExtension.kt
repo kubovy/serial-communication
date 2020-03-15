@@ -55,6 +55,12 @@ abstract class CommunicatorExtension<ConnectionDescriptor>(
 	final override val listeners: MutableList<CommunicatorListener>
 		get() = communicator.listeners
 
+	override var connectionDescriptor: ConnectionDescriptor?
+		get() = communicator.connectionDescriptor
+		set(value) {
+			communicator.connectionDescriptor = value
+		}
+
 	private fun startup() {
 		communicator.register(this)
 	}

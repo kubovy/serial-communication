@@ -15,7 +15,7 @@
  * License along with this program.  If not, see                              *
  * <http://www.gnu.org/licenses/>.                                            *
  ******************************************************************************/
-@file:Suppress("unused")
+@file:Suppress("unused", "MemberVisibilityCanBePrivate")
 package com.poterion.communication.serial.scanner
 
 import com.poterion.communication.serial.communicator.Channel
@@ -37,7 +37,7 @@ abstract class Scanner<ConnectionDescriptor> {
     }
 
     private val scannerExecutor = Executors.newSingleThreadExecutor()
-    private val scannerThread: Thread
+    private var scannerThread: Thread? = null
     private val devices = mutableListOf<ConnectionDescriptor>()
     private val listeners = mutableListOf<ScannerListener<ConnectionDescriptor>>()
     var paused: Boolean = false
@@ -59,12 +59,6 @@ abstract class Scanner<ConnectionDescriptor> {
         }
     }
 
-    init {
-        scannerThread = Thread(scannerRunnable)
-        scannerThread.name = "scanner"
-        scannerExecutor.execute(scannerThread)
-    }
-
     /**
      * Available devices getter.
      *
@@ -72,8 +66,20 @@ abstract class Scanner<ConnectionDescriptor> {
      */
     abstract fun getAvailableDevices(): Collection<ConnectionDescriptor>?
 
+    fun start() {
+        stop()
+        scannerThread = Thread(scannerRunnable).also { thread ->
+            thread.name = "scanner"
+            scannerExecutor.execute(thread)
+        }
+    }
+
+    fun stop() {
+        scannerThread?.interrupt()
+    }
+
     fun shutdown() {
-        scannerThread.interrupt()
+        stop()
         scannerExecutor.shutdown()
         scannerExecutor.awaitTermination(500, TimeUnit.MILLISECONDS)
     }
@@ -84,7 +90,9 @@ abstract class Scanner<ConnectionDescriptor> {
      * @param listener Listener to register.
      */
     fun register(listener: ScannerListener<ConnectionDescriptor>) {
+        val start = listeners.isEmpty()
         if (!listeners.contains(listener)) listeners.add(listener)
+        if (start) start()
     }
 
     /**

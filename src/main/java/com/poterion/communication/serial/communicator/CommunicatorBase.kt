@@ -57,7 +57,7 @@ abstract class CommunicatorBase<ConnectionDescriptor> {
 	internal open val listeners = mutableListOf<CommunicatorListener>()
 
 	/** Connection descriptor. */
-	var connectionDescriptor: ConnectionDescriptor? = null
+	open var connectionDescriptor: ConnectionDescriptor? = null
 		set(value) {
 			if (value == null || canConnect(value)) field = value
 		}

@@ -31,8 +31,7 @@ import java.util.concurrent.ConcurrentLinkedQueue
  *
  * @author Jan Kubovy [jan@kubovy.eu]
  */
-class USBCommunicator : Communicator<USBCommunicator.Descriptor>(
-	Channel.USB) {
+class USBCommunicator : Communicator<USBCommunicator.Descriptor>(Channel.USB) {
 
 	/**
 	 * USB connection descriptor.
