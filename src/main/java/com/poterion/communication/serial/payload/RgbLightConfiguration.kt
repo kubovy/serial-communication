@@ -40,13 +40,14 @@ data class RgbLightConfiguration(val pattern: RgbLightPattern = RgbLightPattern.
 								 val fading: Int = RgbLightPattern.OFF.fading ?: 0,
 								 val minimum: Int = RgbLightPattern.OFF.min ?: 0,
 								 val maximum: Int = RgbLightPattern.OFF.max ?: 255,
-								 val timeout: Int = RgbLightPattern.OFF.timeout ?: 50) {
+								 val timeout: Int = RgbLightPattern.OFF.timeout ?: 50,
+								 val rainbow: Int = 0x00) {
 
 	constructor(pattern: RgbLightPattern, color1: RgbColor, color2: RgbColor, color3: RgbColor, color4: RgbColor,
 				color5: RgbColor, color6: RgbColor, color7: RgbColor, delay: Int, width: Int, fading: Int,
-				minimum: Int, maximum: Int, timeout: Int) :
+				minimum: Int, maximum: Int, timeout: Int, rainbow: Int) :
 			this(pattern, color1.toHex(), color2.toHex(), color3.toHex(), color4.toHex(), color5.toHex(),
-					color6.toHex(), color7.toHex(), delay, width, fading, minimum, maximum, timeout)
+					color6.toHex(), color7.toHex(), delay, width, fading, minimum, maximum, timeout, rainbow)
 
 	val color1: RgbColor
 		@JsonIgnore get() = _color1.toRGBColor() ?: RgbColor()

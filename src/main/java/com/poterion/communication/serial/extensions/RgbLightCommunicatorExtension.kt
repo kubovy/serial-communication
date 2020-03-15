@@ -26,9 +26,8 @@ import com.poterion.communication.serial.payload.ColorOrder
 import com.poterion.communication.serial.payload.RgbColor
 import com.poterion.communication.serial.payload.RgbLightConfiguration
 import com.poterion.communication.serial.payload.RgbLightPattern
-import com.poterion.communication.serial.toRgbColor
 import com.poterion.communication.serial.toComponents
-import com.poterion.communication.serial.toHex
+import com.poterion.communication.serial.toRgbColor
 
 /**
  * RGB light communicator extension extends the default [Communicator] with [MessageKind.LIGHT] capabilities.
@@ -53,18 +52,23 @@ class RgbLightCommunicatorExtension<ConnectionDescriptor>(
 			34 -> listeners
 					.filterIsInstance<RgbLightCommunicatorListener>()
 					.forEach {
-					val config = RgbLightConfiguration(
-							RgbLightPattern.values().find { p -> p.code == message[5] } ?: RgbLightPattern.OFF,
-							message.toRgbColor(colorOrder(message[2]), 6),
-							message.toRgbColor(colorOrder(message[2]), 9),
-							message.toRgbColor(colorOrder(message[2]), 12),
-							message.toRgbColor(colorOrder(message[2]), 15),
-							message.toRgbColor(colorOrder(message[2]), 18),
-							message.toRgbColor(colorOrder(message[2]), 21),
-							message.toRgbColor(colorOrder(message[2]), 24),
-							((message[27] and 0xFF) shl 8) or (message[28] and 0xFF),
-							message[29], message[30], message[31], message[32], message[33])
-					it.onRgbLightConfiguration(channel, message[2], message[3], message[4], config)
+						val rainbow = message.toRgbColor(colorOrder(message[2]), 6)
+								.takeIf { (red, green, blue) -> red == 0x01 && green ==0x02 && blue < 0x05 }
+								?.blue
+								?: 0x00
+						val config = RgbLightConfiguration(
+								RgbLightPattern.values().find { p -> p.code == message[5] } ?: RgbLightPattern.OFF,
+								message.toRgbColor(colorOrder(message[2]), 6),
+								message.toRgbColor(colorOrder(message[2]), 9),
+								message.toRgbColor(colorOrder(message[2]), 12),
+								message.toRgbColor(colorOrder(message[2]), 15),
+								message.toRgbColor(colorOrder(message[2]), 18),
+								message.toRgbColor(colorOrder(message[2]), 21),
+								message.toRgbColor(colorOrder(message[2]), 24),
+								((message[27] and 0xFF) shl 8) or (message[28] and 0xFF),
+								message[29], message[30], message[31], message[32], message[33],
+								rainbow)
+						it.onRgbLightConfiguration(channel, message[2], message[3], message[4], config)
 				}
 		}
 	}
@@ -108,12 +112,12 @@ class RgbLightCommunicatorExtension<ConnectionDescriptor>(
 	 */
 	fun sendRgbLightSet(num: Int, pattern: RgbLightPattern, color1: RgbColor, color2: RgbColor, color3: RgbColor,
 						color4: RgbColor, color5: RgbColor, color6: RgbColor, color7: RgbColor, delay: Int, width: Int,
-						fading: Int, min: Int, max: Int, timeout: Int, replace: Boolean = false) =
+						fading: Int, min: Int, max: Int, timeout: Int, rainbow: Int, replace: Boolean = false) =
 			sendBytes(MessageKind.LIGHT, num, pattern.code or (if (replace) 0x80 else 0x00),
-					*color1.toComponents(colorOrder(num)),
-					*color2.toComponents(colorOrder(num)),
-					*color3.toComponents(colorOrder(num)),
-					*color4.toComponents(colorOrder(num)),
+					*(rainbow.takeIf { it > 0 }?.let { RgbColor(0x01, 0x02, it)} ?: color1).toComponents(colorOrder(num)),
+					*(rainbow.takeIf { it > 0 }?.let { RgbColor(0x01, 0x02, it)} ?: color2).toComponents(colorOrder(num)),
+					*(rainbow.takeIf { it > 0 }?.let { RgbColor(0x01, 0x02, it)} ?: color3).toComponents(colorOrder(num)),
+					*(rainbow.takeIf { it > 0 }?.let { RgbColor(0x01, 0x02, it)} ?: color4).toComponents(colorOrder(num)),
 					*color5.toComponents(colorOrder(num)),
 					*color6.toComponents(colorOrder(num)),
 					*color7.toComponents(colorOrder(num)),
@@ -133,5 +137,5 @@ class RgbLightCommunicatorExtension<ConnectionDescriptor>(
 		sendRgbLightSet(num, configuration.pattern, configuration.color1, configuration.color2, configuration.color3,
 				configuration.color4, configuration.color5, configuration.color6, configuration.color7,
 				configuration.delay, configuration.width, configuration.fading, configuration.minimum,
-				configuration.maximum, configuration.timeout, replace)
+				configuration.maximum, configuration.timeout, configuration.rainbow, replace)
 }
