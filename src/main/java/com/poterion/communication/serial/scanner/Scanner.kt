@@ -19,7 +19,6 @@
 package com.poterion.communication.serial.scanner
 
 import com.poterion.communication.serial.communicator.Channel
-import javafx.application.Platform
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.io.IOException
@@ -49,7 +48,7 @@ abstract class Scanner<ConnectionDescriptor> {
                     if (devices.size != currentDevices.size || devices.any { !currentDevices.contains(it) }) {
                         devices.clear()
                         devices.addAll(currentDevices)
-                        listeners.forEach { Platform.runLater { it.onAvailableDevicesChanged(Channel.USB, devices) } }
+                        listeners.forEach { it.onAvailableDevicesChanged(Channel.USB, devices) }
                     }
                 }
             } catch (e: IOException) {

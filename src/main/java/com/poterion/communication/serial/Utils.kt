@@ -20,9 +20,8 @@ package com.poterion.communication.serial
 
 import com.poterion.communication.serial.payload.ColorOrder
 import com.poterion.communication.serial.payload.RgbColor
-import javafx.scene.paint.Color
+import java.awt.Color
 import java.nio.charset.Charset
-import kotlin.math.roundToInt
 
 /**
  * Converts 8 bools to one byte.
@@ -114,46 +113,22 @@ fun String.toRGBColor(): RgbColor? = "^#?([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})([0-9A-
 		?.let { RgbColor(it[0], it[1], it[2]) }
 
 /**
- * Coverts a hex-encoded color to [Color].
- * @author Jan Kubovy [jan@kubovy.eu]
- */
-fun String.toColor(): Color? = toRGBColor()?.toColor()
-
-/**
- * Converts a [Color] to [RgbColor].
- * @author Jan Kubovy [jan@kubovy.eu]
- */
-fun Color.toRGBColor(): RgbColor = RgbColor(red.relativeToByte(), green.relativeToByte(), blue.relativeToByte())
-
-/**
- * Converts a [Color] to hex-encoded color string.
- * @author Jan Kubovy [jan@kubovy.eu]
- */
-fun Color.toHex(prefix: String = "#") = toRGBColor().toHex(prefix)
-
-/**
  * Converts a [java.awt.Color] to [RgbColor].
  * @author Jan Kubovy [jan@kubovy.eu]
  */
-fun java.awt.Color.toRGBColor(): RgbColor = RgbColor(red, green, blue)
+fun Color.toRGBColor(): RgbColor = RgbColor(red, green, blue)
 
 /**
  * Converts a [java.awt.Color] to hex-encoded color string.
  * @author Jan Kubovy [jan@kubovy.eu]
  */
-fun java.awt.Color.toHex(prefix: String = "#") = toRGBColor().toHex(prefix)
-
-/**
- * Converts [RgbColor] to [Color].
- * @author Jan Kubovy [jan@kubovy.eu]
- */
-fun RgbColor.toColor() = Color.rgb(red, green, blue)
+fun Color.toHex(prefix: String = "#") = toRGBColor().toHex(prefix)
 
 /**
  * Converts [RgbColor] to [java.awt.Color].
  * @author Jan Kubovy [jan@kubovy.eu]
  */
-fun RgbColor.toAwtColor() = java.awt.Color(red, green, blue)
+fun RgbColor.toAwtColor() = Color(red, green, blue)
 
 /**
  * Converts [RgbColor] to an array of RGB components.
@@ -181,5 +156,3 @@ fun IntArray.toRgbColor(colorOrder: ColorOrder = ColorOrder.RGB, from: Int = 0) 
  * @author Jan Kubovy [jan@kubovy.eu]
  */
 fun RgbColor.toHex(prefix: String = "#") = listOf(red, green, blue).joinToString("", prefix) { "%02X".format(it) }
-
-private fun Double.relativeToByte(): Int = (this * 255.0).roundToInt()
