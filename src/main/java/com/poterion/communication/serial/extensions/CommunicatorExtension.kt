@@ -43,6 +43,9 @@ abstract class CommunicatorExtension<ConnectionDescriptor>(
 		startup()
 	}
 
+	final override val channel: Channel
+		get() = communicator.channel
+
 	final override val state: State
 		get() = communicator.state
 

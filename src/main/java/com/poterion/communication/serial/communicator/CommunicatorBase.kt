@@ -28,6 +28,8 @@ import com.poterion.communication.serial.payload.DeviceCapabilities
  */
 abstract class CommunicatorBase<ConnectionDescriptor> {
 
+	abstract val channel: Channel
+
 	/** Whether the device is in [State.CONNECTED] or not */
 	val isConnected: Boolean
 		get() = state == State.CONNECTED

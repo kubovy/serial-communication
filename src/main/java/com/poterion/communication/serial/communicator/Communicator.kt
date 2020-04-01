@@ -153,8 +153,8 @@ import kotlin.random.Random
  * A  <--  B: CRC
  * @enduml
  */
-abstract class Communicator<ConnectionDescriptor>(internal val channel: Channel):
-	CommunicatorBase<ConnectionDescriptor>() {
+abstract class Communicator<ConnectionDescriptor>(override val channel: Channel) :
+		CommunicatorBase<ConnectionDescriptor>() {
 
 	companion object {
 		private val LOGGER: Logger = LoggerFactory.getLogger(Communicator::class.java)
@@ -164,22 +164,6 @@ abstract class Communicator<ConnectionDescriptor>(internal val channel: Channel)
 		const val MESSAGE_CONFIRMATION_TIMEOUT = 500L // default delay in ms
 		const val MAX_SEND_ATTEMPTS = 20
 	}
-
-//	/** Whether the device is in [State.CONNECTED] or not */
-//	val isConnected: Boolean
-//		get() = state == State.CONNECTED
-//
-//	/** Whether the device is in [State.CONNECTING] or not */
-//	val isConnecting: Boolean
-//		get() = state == State.CONNECTING
-//
-//	/** Whether the device is in [State.DISCONNECTING] or not */
-//	val isDisconnecting: Boolean
-//		get() = state == State.DISCONNECTING
-//
-//	/** Whether the device is in [State.DISCONNECTED] or not */
-//	val isDisconnected: Boolean
-//		get() = state == State.DISCONNECTED
 
 	private var connectionRequested = false
 
