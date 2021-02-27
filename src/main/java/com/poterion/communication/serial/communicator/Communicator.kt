@@ -263,7 +263,7 @@ abstract class Communicator<ConnectionDescriptor>(override val channel: Channel)
 				if (message != null && data != null) {
 					val chksumReceived = message[0].toInt() and 0xFF
 					val chksumCalculated = message.toList().subList(1, message.size).toByteArray().calculateChecksum()
-					message.toDebugMessage("Inbound ", chksumReceived)?.also { LOGGER.debug(it) }
+					LOGGER.debug(message, "Inbound ", chksumReceived)
 					if (chksumCalculated == chksumReceived) {
 						val messageKind = message[1]
 							.let { byte -> MessageKind.values().find { it.code.toByte() == byte } }
@@ -322,9 +322,10 @@ abstract class Communicator<ConnectionDescriptor>(override val channel: Channel)
 										}
 									}
 								}
-								message.toDebugMessage("Inbound ", chksumReceived,
-									"${"0x%02X".format(message[3])} -> ${"0x%02X".format(iddState)}")
-									?.also { LOGGER.debug(it) }
+								LOGGER.debug(
+									message, "Inbound ", chksumReceived,
+									"${"0x%02X".format(message[3])} -> ${"0x%02X".format(iddState)}"
+								)
 								listeners.forEach { it.onMessageReceived(channel, message.toIntArray()) }
 							}
 							else -> {
@@ -359,8 +360,7 @@ abstract class Communicator<ConnectionDescriptor>(override val channel: Channel)
 					data =
 						listOf(data.calculateChecksum().toByte(), MessageKind.CRC.code.toByte(), chksum).toByteArray()
 					sendMessage(data)
-					data.toDebugMessage("Outbound", lastChecksum, "(checksum queue: ${checksumQueue.size})")
-						?.also { LOGGER.debug(it) }
+					LOGGER.debug(data, "Outbound", lastChecksum, "(checksum queue: ${checksumQueue.size})")
 					//listeners.forEach { it.onMessageSent(channel, data, messageQueue.size) }
 				} else if (messageQueue.isNotEmpty()) {
 					idleLoops = 0
@@ -371,7 +371,7 @@ abstract class Communicator<ConnectionDescriptor>(override val channel: Channel)
 					val data = listOf(checksum.toByte(), *message.toTypedArray()).toByteArray()
 					lastChecksum = null
 					sendMessage(data)
-					data.toDebugMessage("Outbound", lastChecksum, "(attempt: ${attempt})")?.also { LOGGER.debug(it) }
+					LOGGER.debug(data, "Outbound", lastChecksum, "(attempt: ${attempt})")
 
 					var timeout = delay ?: MESSAGE_CONFIRMATION_TIMEOUT
 					while (lastChecksum != checksum && timeout > 0) {
@@ -394,12 +394,10 @@ abstract class Communicator<ConnectionDescriptor>(override val channel: Channel)
 						}
 						MessageKind.IDD -> {
 							if (correctlyReceived) {
-								data.toDebugMessage("Outbound", lastChecksum, "(remaining: ${messageQueue.size})")
-									?.also { LOGGER.debug(it) }
+								LOGGER.debug(data, "Outbound", lastChecksum, "(remaining: ${messageQueue.size})")
 								iddCounter = -5
 							} else {
-								data.toDebugMessage("Outbound", lastChecksum, "${iddCounter + 1}. ping NOT returned")
-									?.also { LOGGER.debug(it) }
+								LOGGER.debug(data, "Outbound", lastChecksum, "${iddCounter + 1}. ping NOT returned")
 								iddCounter++
 							}
 							if (iddCounter > 4) {
@@ -409,8 +407,10 @@ abstract class Communicator<ConnectionDescriptor>(override val channel: Channel)
 						}
 						else -> {
 							if (correctlyReceived) {
-								data.toDebugMessage("Outbound", lastChecksum,
-									"SUCCESS (remaining: ${messageQueue.size})")?.also { LOGGER.debug(it) }
+								LOGGER.debug(
+									data, "Outbound", lastChecksum,
+									"SUCCESS (remaining: ${messageQueue.size})"
+								)
 								listeners.forEach { it.onMessageSent(channel, data.toIntArray(), messageQueue.size) }
 							}
 						}
@@ -566,6 +566,10 @@ abstract class Communicator<ConnectionDescriptor>(override val channel: Channel)
 					" ${message}"
 		}
 		return null
+	}
+
+	private fun Logger.debug(data: ByteArray, direction: String, checksum: Int?, message: String = "") {
+		if (isDebugEnabled) data.toDebugMessage(direction, checksum, message)?.also { debug(it) }
 	}
 
 	private fun ByteArray.toDebugString(text: Boolean = true) = joinToString(" ") { "0x%02X".format(it) } +
