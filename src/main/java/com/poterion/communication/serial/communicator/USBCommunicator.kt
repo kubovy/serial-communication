@@ -148,10 +148,7 @@ class USBCommunicator : Communicator<USBCommunicator.Descriptor>(Channel.USB) {
 			} != null
 
 	override fun cleanUpConnection() {
-		if (serialPort?.isOpened == true) {
-			serialPort?.removeEventListener()
-			serialPort?.closePort()
-		}
+		serialPort?.takeIf { it.isOpened }?.closePort()
 		serialPort = null
 	}
 
@@ -181,8 +178,8 @@ class USBCommunicator : Communicator<USBCommunicator.Descriptor>(Channel.USB) {
 	private fun ByteArray.wrap() = ByteArray(size + 4) {
 		when (it) {
 			0 -> 0xAA.toByte()
-			1 -> (size / 256.0).toByte()
-			2 -> (size % 256.0).toByte()
+			1 -> (size / 256.0).toInt().toByte()
+			2 -> (size % 256.0).toInt().toByte()
 			size + 3 -> (0xFF - ((size / 256.0).toInt() + (size % 256.0).toInt() + reduce { acc, byte -> (acc + byte).toByte() }) + 1).toByte()
 			else -> get(it - 3)
 		}

@@ -195,6 +195,7 @@ abstract class Communicator<ConnectionDescriptor>(override val channel: Channel)
 
 	private var idleLoops = 0
 	private var onDemand = false
+	private var onDemandStarted = 0L
 	protected val logTag: String
 		get() = "${channel} ${connectionDescriptor}>"
 
@@ -238,7 +239,9 @@ abstract class Communicator<ConnectionDescriptor>(override val channel: Channel)
 			} else if (state == State.CONNECTED) {
 				Thread.sleep(100)
 				idleLoops++
-				if (!onDemand && idleLoops >= 30) {
+				if (onDemand && System.currentTimeMillis() - onDemandStarted > 2000L) {
+					disconnectInternal(stayDisconnected = true)
+				} else if (!onDemand && idleLoops >= 30) {
 					if (messageQueue.isEmpty() && checksumQueue.isEmpty()) sendPing()
 					idleLoops = 0
 				}
@@ -353,7 +356,8 @@ abstract class Communicator<ConnectionDescriptor>(override val channel: Channel)
 					idleLoops = 0
 					val chksum = checksumQueue.poll()
 					var data = listOf(MessageKind.CRC.code.toByte(), chksum).toByteArray()
-					data = listOf(data.calculateChecksum().toByte(), MessageKind.CRC.code.toByte(), chksum).toByteArray()
+					data =
+						listOf(data.calculateChecksum().toByte(), MessageKind.CRC.code.toByte(), chksum).toByteArray()
 					sendMessage(data)
 					data.toDebugMessage("Outbound", lastChecksum, "(checksum queue: ${checksumQueue.size})")
 						?.also { LOGGER.debug(it) }
@@ -446,6 +450,7 @@ abstract class Communicator<ConnectionDescriptor>(override val channel: Channel)
 	final override fun sendBytes(kind: MessageKind, vararg message: Byte) {
 		listeners.forEach { it.onMessagePrepare(channel) }
 		if (isDisconnected) {
+			onDemandStarted = System.currentTimeMillis()
 			onDemand = true
 			connectionDescriptor?.let { connect(it) }
 		}
@@ -503,10 +508,10 @@ abstract class Communicator<ConnectionDescriptor>(override val channel: Channel)
 		return false
 	}
 
-	private fun reconnect() = disconnectInternal(false)
+	private fun reconnect() = disconnectInternal(stayDisconnected = false)
 
 	/** Disconnects from a device. */
-	final override fun disconnect() = disconnectInternal(true)
+	final override fun disconnect() = disconnectInternal(stayDisconnected = true)
 
 	private fun disconnectInternal(stayDisconnected: Boolean) {
 		LOGGER.debug("${logTag} Disconnecting ...")
@@ -551,7 +556,8 @@ abstract class Communicator<ConnectionDescriptor>(override val channel: Channel)
 	private fun ByteArray.toDebugMessage(direction: String, checksum: Int?, message: String = ""): String? {
 		val chksumCalculated = this.toList().subList(1, this.size).toByteArray().calculateChecksum()
 		if ((CRC_PRINT || this.getOrNull(1)?.toInt() != MessageKind.CRC.code)
-			&& (IDD_PING_PRINT || this.getOrNull(1)?.toInt() != MessageKind.IDD.code || this.size > 3)) {
+			&& (IDD_PING_PRINT || this.getOrNull(1)?.toInt() != MessageKind.IDD.code || this.size > 3)
+		) {
 			return "${logTag} ${direction}" +
 					"[${checksum?.let { "0x%02X".format(it) } ?: "----"}/${"0x%02X".format(chksumCalculated)}]" +
 					" ${MessageKind.values().find { it.code == this.getOrNull(1)?.toInt() } ?: MessageKind.UNKNOWN}" +
